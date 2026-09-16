@@ -130,3 +130,16 @@ cd /Users/fish/环艾
 - 本任务旧预览PNG、inspect结果、浏览器调试输出、旧脚本对应pyc，以及仅供旧导出器使用的根目录node_modules链接
 
 苏州工作流 `run.py`、`crawler/`、`data/`、`sources.yaml`、相关文档及产出属于独立任务，保留。
+
+## 本地 Git 开发流程（2026-09-16）
+
+- 本目录已初始化本地Git，主分支 `main`。不配置远端、不上传缓存或产出。
+- 新功能先执行 `.venv/bin/python scripts/dev.py start <功能名>`，从main建立 `feature/<功能名>`；要求工作区干净。
+- `.githooks/pre-commit` 检查暂存快照的Ruff lint，阻止main直接提交；合并提交额外执行全部离线测试。
+- `.githooks/pre-merge-commit` 保护普通非快进merge；本地配置 `merge.ff=false`。
+- 推荐在main执行 `.venv/bin/python scripts/dev.py merge feature/<功能名>`，检查合并后的索引快照，失败或冲突自动abort，保留功能分支。
+- `.venv/bin/python scripts/dev.py check` 运行lint、南京33项回归和 `tests/` 下测试；当前新增6项Git流程集成测试。苏州仅纳入lint，尚无专门业务回归。
+- hooks随源码保存，但新克隆必须运行 `scripts/dev.py setup`；开发依赖见 `requirements-dev.txt`，Ruff固定为0.12.12。
+- 本地钩子能被 `--no-verify`、显式快进或修改配置绕过，不宣称不可绕过的分支保护。
+- 原始缓存、data/output/outputs、.venv、.env等已忽略，只是不纳入Git，不删除文件。
+- 南京业务唯一运行入口仍是 `nanjing_departments_workflow.py`；`scripts/dev.py`仅负责开发检查及Git操作。

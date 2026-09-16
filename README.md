@@ -1,5 +1,42 @@
 # 环评数据工作流
 
+## 本地开发、自测与合并
+
+首次配置已完成。换电脑或重新克隆后，先准备 Python 3.10+ 虚拟环境并安装开发依赖，再安装本仓库钩子：
+
+```bash
+uv venv .venv
+uv pip install --python .venv/bin/python -r requirements-dev.txt
+.venv/bin/python scripts/dev.py setup
+```
+
+日常流程（把 `add-source` 换成这次功能的名称）：
+
+```bash
+# 1. 从 main 创建 feature/add-source，要求工作区干净
+.venv/bin/python scripts/dev.py start add-source
+
+# 2. 修改后提交，自动 lint；检查的是实际暂存内容
+git add <本次修改的文件>
+git commit -m "描述本次修改"
+
+# 3. 合并到 main，自动检查合并后的暂存快照
+git switch main
+.venv/bin/python scripts/dev.py merge feature/add-source
+```
+
+可随时运行 `.venv/bin/python scripts/dev.py check`，一次执行 lint 和测试；`lint`、`test` 可分别运行。目前包含南京原有33项离线回归测试和6项真实Git流程测试，后者在临时仓库验证提交拦截、成功合并、测试失败回滚、普通merge拦截、冲突回滚和主分支直接提交拦截。测试不请求i-ESG，也不覆盖正式工作簿。苏州代码参与lint，尚未配置专门的苏州业务测试。
+
+- 提交：Ruff检查暂存快照的所有Python源码，拦截语法、未定义变量和部分明显逻辑错误；暂未强制历史代码的格式/行长风格。
+- 合并：强制生成合并提交；其提交钩子执行lint和全部测试，失败即阻止提交。推荐的 `dev.py merge` 还会自动撤销失败或冲突的合并，保留功能分支。
+- 普通 `git merge`：已配置禁用默认快进并安装合并钩子；失败可能留下待处理的合并状态，可用 `git merge --abort` 撤销。
+- 主分支：钩子阻止直接提交到main（首次初始化除外），新功能必须在功能分支提交后合并。
+- 新增离线回归测试放进 `tests/test_*.py`，下次合并自动纳入。修改测试或钩子本身也应认真审查。
+
+这是本地防误操作流程。`--no-verify`、显式 `--ff-only` 或关闭/修改钩子可以绕过本地检查；不要把它视为服务器分支保护。需要不可绕过的团队规则时，再配置远端CI及保护分支。
+
+Git只管理代码与文档；缓存、虚拟环境、数据、账号环境文件和产出目录已忽略，现有本地文件保留。
+
 ## 南京单位官网及环评入口（当前任务）
 
 一条命令生成最终工作簿：
