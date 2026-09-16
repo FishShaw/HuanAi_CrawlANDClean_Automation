@@ -1,0 +1,162 @@
+# 数据源登记：每个“审批机关 × 栏目”一行。新增站点时，如果网站属于已有模板（adapter），只需加一行。
+#   adapter: trs（xxx_list_N.shtml）| paged（?page=N）| sipac（苏州工业园区接口）
+#   link_pattern: 正则，只匹配本栏目详情页链接（避免把侧边栏、首页兜底页的链接算进来）
+#   stage_hint: 标题规则识别不出阶段时用的栏目默认阶段
+#   mixed: true 表示栏目里混着非环评公告，标题必须含环评关键词才收
+defaults:
+  city: 苏州市
+  min_interval: 3.0
+
+sources:
+  # ---------- 苏州市生态环境局（统一发布太仓、昆山、张家港、相城、吴中、常熟、吴江等分局） ----------
+  - id: sz_sthjj_sl
+    name: 苏州市生态环境局·受理公示
+    authority: 苏州市生态环境局
+    level: 市级
+    adapter: trs
+    list_url: https://sthjj.suzhou.gov.cn/szhbj/jsslgs/bjgs_list.shtml
+    link_pattern: '/szhbj/jsslgs/\d{6}/[0-9a-f]{32}\.shtml$'
+    stage_hint: S1
+  - id: sz_sthjj_nsp
+    name: 苏州市生态环境局·拟审批公示
+    authority: 苏州市生态环境局
+    level: 市级
+    adapter: trs
+    list_url: https://sthjj.suzhou.gov.cn/szhbj/jsnspgs/bjgs_list.shtml
+    link_pattern: '/szhbj/jsnspgs/\d{6}/[0-9a-f]{32}\.shtml$'
+    stage_hint: S2
+  - id: sz_sthjj_pz
+    name: 苏州市生态环境局·批准项目公告
+    authority: 苏州市生态环境局
+    level: 市级
+    adapter: trs
+    list_url: https://sthjj.suzhou.gov.cn/szhbj/jspzxmgg/bjgs_list.shtml
+    link_pattern: '/szhbj/jspzxmgg/\d{6}/[0-9a-f]{32}\.shtml$'
+    stage_hint: S3
+  - id: sz_sthjj_gzcn
+    name: 苏州市生态环境局·告知承诺审批公示
+    authority: 苏州市生态环境局
+    level: 市级
+    adapter: trs
+    list_url: https://sthjj.suzhou.gov.cn/szhbj/gzcnspgs/bjgs_list.shtml
+    link_pattern: '/szhbj/gzcnspgs/\d{6}/[0-9a-f]{32}\.shtml$'
+    stage_hint: S3
+  - id: sz_sthjj_fs_sl
+    name: 苏州市生态环境局·辐射项目受理公示
+    authority: 苏州市生态环境局
+    level: 市级
+    adapter: trs
+    list_url: https://sthjj.suzhou.gov.cn/szhbj/fsslgs/bjgs_list.shtml
+    link_pattern: '/szhbj/fsslgs/\d{6}/[0-9a-f]{32}\.shtml$'
+    stage_hint: S1
+  - id: sz_sthjj_fs_pz
+    name: 苏州市生态环境局·辐射项目批准公告
+    authority: 苏州市生态环境局
+    level: 市级
+    adapter: trs
+    list_url: https://sthjj.suzhou.gov.cn/szhbj/fspzxmgg/bjgs_list.shtml
+    link_pattern: '/szhbj/fspzxmgg/\d{6}/[0-9a-f]{32}\.shtml$'
+    stage_hint: S3
+
+  # ---------- 苏州高新区（虎丘区） ----------
+  - id: snd_sl
+    name: 苏州高新区·受理公示
+    authority: 苏州高新区管委会
+    level: 国家级高新区
+    adapter: trs
+    list_url: http://www.snd.gov.cn/hqqrmzf/slgs/nav_list.shtml
+    link_pattern: '/hqqrmzf/slgs/\d{6}/[0-9a-f]{32}\.shtml$'
+    stage_hint: S1
+  - id: snd_nsp
+    name: 苏州高新区·拟审批公示
+    authority: 苏州高新区管委会
+    level: 国家级高新区
+    adapter: trs
+    list_url: http://www.snd.gov.cn/hqqrmzf/nspgs/nav_list.shtml
+    link_pattern: '/hqqrmzf/nspgs/\d{6}/[0-9a-f]{32}\.shtml$'
+    stage_hint: S2
+  - id: snd_pz
+    name: 苏州高新区·批准项目公告
+    authority: 苏州高新区管委会
+    level: 国家级高新区
+    adapter: trs
+    list_url: http://www.snd.gov.cn/hqqrmzf/pzxmgg/nav_list.shtml
+    link_pattern: '/hqqrmzf/pzxmgg/\d{6}/[0-9a-f]{32}\.shtml$'
+    stage_hint: S3
+
+  # ---------- 苏州工业园区（JSON 接口） ----------
+  - id: sipac_sl
+    name: 苏州工业园区·受理和拟审批公示
+    authority: 苏州工业园区生态环境局
+    level: 国家级开发区
+    adapter: sipac
+    portal_url: https://www.sipac.gov.cn/gthbj/hpgs/202302/d2393b1b6b024578852f933f729c1d48.shtml
+    api: getGongShiDataYQ
+    stage_hint: S1
+  - id: sipac_pz
+    name: 苏州工业园区·批准项目公告
+    authority: 苏州工业园区生态环境局
+    level: 国家级开发区
+    adapter: sipac
+    portal_url: https://www.sipac.gov.cn/gthbj/hppzxmgg/202302/ed7f1515178944b2807f9fe5bd241c67.shtml
+    api: getApprovalGongShiDataYQ
+    stage_hint: S3
+
+  # ---------- 县级市 / 区 / 开发区自有栏目 ----------
+  - id: wz_jshp
+    name: 吴中区·环评行政审批
+    authority: 苏州市吴中区政务服务管理办公室
+    level: 区县
+    adapter: trs
+    list_url: http://www.szwz.gov.cn/szwz/jshp/list.shtml
+    link_pattern: '/szwz/jshp/\d{6}/[0-9a-f]{32}\.shtml$'
+  - id: xc_tzgg
+    mixed: true
+    name: 相城区·公示公告（含相城经开区环评）
+    authority: 苏州相城经济技术开发区管委会
+    level: 国家级经开区
+    adapter: trs
+    list_url: http://www.szxc.gov.cn/szxcrmzf/tzgg/list.shtml
+    link_pattern: '/szxcrmzf/tzgg/\d{6}/[0-9a-f]{32}\.shtml$'
+  - id: zjg_jsxm
+    name: 张家港市·建设项目环评
+    authority: 张家港市
+    level: 县级市
+    adapter: trs
+    list_url: https://www.zjg.gov.cn/zjg/jsxmv/zdlylist.shtml
+    link_pattern: '/zjgszwz/jsxmhp01n/\d{6}/[0-9a-f]{32}\.shtml$'
+  - id: ks_gsgg
+    mixed: true
+    name: 昆山市·公示公告（含昆山开发区、高新区环评）
+    authority: 昆山市
+    level: 县级市
+    adapter: trs
+    list_url: https://www.ks.gov.cn/kss/gsgg/common_list2.shtml
+    link_pattern: '/kss/gsgg/\d{6}/[0-9a-f]{32}\.shtml$'
+  - id: cs_edz
+    mixed: true
+    name: 常熟经开区·信息发布
+    authority: 常熟经济技术开发区管委会
+    level: 国家级经开区
+    adapter: paged
+    list_url: https://www.changshu-china.com/part-xinxifabu.html
+    page_url: 'https://www.changshu-china.com/part-xinxifabu.html?page={n}'
+    link_pattern: '/item-[A-Za-z0-9]+\.html$'
+  - id: cs_xcl
+    mixed: true
+    name: 常熟新材料产业园·公示信息
+    authority: 常熟经济技术开发区管委会（新材料产业园）
+    level: 国家级经开区
+    adapter: paged
+    list_url: http://58.210.182.61:10520/gongshixinxi
+    page_url: 'http://58.210.182.61:10520/gongshixinxi?pageNumber={n}'
+    link_pattern: '/gongshixinxi/\d+$'
+  - id: cs_cnz
+    mixed: true
+    name: 常熟高新区·通知公告
+    authority: 常熟高新技术产业开发区管委会
+    level: 国家级高新区
+    adapter: paged
+    list_url: https://china-cnz.com/notice
+    page_url: 'https://china-cnz.com/notice?page={n}'
+    link_pattern: '/notice/\d+\.html$'

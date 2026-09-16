@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.nanjing_departments_cache/
+data/
+output/
+outputs/
+*.log
