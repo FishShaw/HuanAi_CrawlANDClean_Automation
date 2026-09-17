@@ -1,0 +1,18 @@
+﻿单位,首页入口,受理公示入口,审批前公示入口,审批后意见入口,入口（点击路径）,备注,核验情况,核验日期
+宿迁市生态环境局,https://sthj.suqian.gov.cn/,https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml,https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml,https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml,首页 > 政府信息公开 > 建设项目,栏目页已打开确认（标题“建设项目-宿迁市生态环境局”）；受理、拟审批、作出审批决定的公告混排在同一栏目,已核实,2026-09-16
+宿迁市泗洪生态环境局,http://www.sihong.gov.cn/,http://www.sihong.gov.cn/sihong/hjspgs/,,,泗洪县政府门户 > 环境审批公示,359条；由搜索结果确认泗洪门户设有环境审批公示栏目，未打开核对；2026-09-17复测：返回403，确认为程序化访问受限,访问受限,2026-09-17
+宿迁市泗洪县政务中心,http://www.sihong.gov.cn/,http://www.sihong.gov.cn/sihong/hjspgs/,,,同上,2条记录；泗洪受理窗口设在县政务中心；2026-09-17复测：返回403，确认为程序化访问受限,访问受限,2026-09-17
+宿迁市沭阳生态环境局,https://sthj.suqian.gov.cn/,https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml,,,市局“建设项目”栏目；沭阳县政府门户另有本地栏目（本次未定位）,283条；栏目已打开确认（标题对上，列表由脚本渲染），本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+沭阳县行政服务中心生态环境,https://sthj.suqian.gov.cn/,https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml,,,同上,32条；原始写法末尾缺“窗口/科”，是县行政服务中心的生态环境窗口；栏目已打开确认（标题对上，列表由脚本渲染），本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+沭阳经济技术开发区管理委员会,https://sthj.suqian.gov.cn/,https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml,,,同上,23条；未定位到开发区独立栏目；栏目已打开确认（标题对上，列表由脚本渲染），本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+宿迁市宿豫区环境保护局,https://sthj.suqian.gov.cn/,https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml,,,市局“建设项目”栏目；宿豫区政府门户另有本地栏目（本次未定位）,66条；旧机构名称；栏目已打开确认（标题对上，列表由脚本渲染），本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+宿迁市宿豫区交通运输局,https://sthj.suqian.gov.cn/,,,,宿豫区政府门户 > 部门信息（本次未定位到门户地址）,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+宿迁市泗阳生态环境局,https://sthj.suqian.gov.cn/,https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml,,,市局“建设项目”栏目；泗阳县政府门户另有本地栏目（本次未定位）,33条；栏目已打开确认（标题对上，列表由脚本渲染），本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+宿迁经济技术开发区行政审批局,https://kfq.suqian.gov.cn/,https://kfq.suqian.gov.cn/sjjkfq/hjbh/,https://kfq.suqian.gov.cn/sjjkfq/hjbh/,,宿迁经开区门户 > 环境保护,27条；该栏目里的公告标题是“关于…受理及拟批准…的公示”，受理与拟批准合并,未核实,2026-09-16
+宿迁市生态环境局开发区环保分局,https://kfq.suqian.gov.cn/,https://kfq.suqian.gov.cn/sjjkfq/hjbh/,,,同上,2条记录,未核实,2026-09-16
+开发区生态环境分局,https://kfq.suqian.gov.cn/,https://kfq.suqian.gov.cn/sjjkfq/hjbh/,,,同上,公告原文的简写，18条记录；区县字段指向宿城开发区,未核实,2026-09-16
+开发区环保分局,https://kfq.suqian.gov.cn/,https://kfq.suqian.gov.cn/sjjkfq/hjbh/,,,同上,公告原文的简写，17条记录,未核实,2026-09-16
+宿迁市人民大道888号开发区生态环境分局,https://kfq.suqian.gov.cn/,https://kfq.suqian.gov.cn/sjjkfq/hjbh/,,,同上,2条记录；原始写法把办公地址写进了单位名,未核实,2026-09-16
+号开发区环保分局,https://kfq.suqian.gov.cn/,https://kfq.suqian.gov.cn/sjjkfq/hjbh/,,,同上,1条记录；源数据被截断（应为“…888号开发区环保分局”）,未核实,2026-09-16
+高新区行政审批局,https://sthj.suqian.gov.cn/,https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml,,,市局“建设项目”栏目,2条记录；区县字段指向宿迁本级高新区（与南通海安、泰州海陵的同名单位不是一回事）；栏目已打开确认（标题对上，列表由脚本渲染），本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+宿迁市交通运输局(宿迁市地方铁路建设办公室),https://www.suqian.gov.cn/,,,,宿迁市政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16

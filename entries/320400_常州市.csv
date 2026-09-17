@@ -1,0 +1,31 @@
+﻿单位,首页入口,受理公示入口,审批前公示入口,审批后意见入口,入口（点击路径）,备注,核验情况,核验日期
+常州市生态环境局,https://sthjj.changzhou.gov.cn/,https://sthjj.changzhou.gov.cn/class/ALFJELKI,https://sthjj.changzhou.gov.cn/class/ALFJELKI,https://sthjj.changzhou.gov.cn/class/ALFJELKI,首页 > 建设项目环境影响评价审批,一个栏目里混排三类：受理情况公示、拟作出批复的公示、作出审批决定的公告，故三列填同一地址；栏目路径是随机码（ALFJELKI）,已核实,2026-09-16
+常州市溧阳生态环境局,https://www.liyang.gov.cn/,https://www.liyang.gov.cn/class/KDHIAILJ,https://www.liyang.gov.cn/class/KDHIAILJ,https://www.liyang.gov.cn/class/KDHIAILJ,溧阳市政府门户 > 常州市溧阳生态环境局,溧阳受理窗口在“溧阳市数据局（原市行政审批局）生态环境局窗口”；栏目内含受理公示等,已核实,2026-09-16
+常州市钟楼生态环境局,https://www.zhonglou.gov.cn/,https://www.zhonglou.gov.cn/class/OJJHLHQE,https://www.zhonglou.gov.cn/class/OJJHLHQE,https://www.zhonglou.gov.cn/class/OJJHLHQE,钟楼区政府门户 > 生态环境局,栏目共297条，含受理公示等；路径同样是随机码,已核实,2026-09-16
+常州市金坛生态环境局,https://www.jintan.gov.cn/,https://www.jintan.gov.cn/class/JFKIQAOB,https://www.jintan.gov.cn/class/JFKIQAOB,https://www.jintan.gov.cn/class/JFKIQAOB,金坛区政府门户 > 生态环境局,金坛区政府门户设有生态环境局栏目，但本次未取到该栏目的随机码路径；2026-09-17核实：金坛区政府门户环评栏目 class/JFKIQAOB，受理公示与审批决定同栏,已核实,2026-09-17
+金坛经济开发区科技经贸局环境保护科,https://www.jintan.gov.cn/,https://www.jintan.gov.cn/class/JFKIQAOB,https://www.jintan.gov.cn/class/JFKIQAOB,https://www.jintan.gov.cn/class/JFKIQAOB,同上,2条记录，开发区内设机构；未定位到独立栏目；2026-09-17核实：金坛区政府门户环评栏目 class/JFKIQAOB，受理公示与审批决定同栏,已核实,2026-09-17
+常州市天宁生态环境局工会委员会,https://sthjj.changzhou.gov.cn/,https://sthjj.changzhou.gov.cn/class/ALFJELKI,,,市局“建设项目环境影响评价审批”栏目；天宁区政府门户另有本地栏目（本次未定位）,单位名里的“工会委员会”应是源数据串字，实际是常州市天宁生态环境局；607条记录；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+常州市天宁区住房和城乡建设局,https://sthjj.changzhou.gov.cn/,,,,天宁区政府门户 > 部门信息（本次未定位到门户地址）,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+常州市武进生态环境局,https://sthjj.changzhou.gov.cn/,https://sthjj.changzhou.gov.cn/class/ALFJELKI,,,市局栏目；武进区政府门户另有本地栏目（本次未定位）,22条记录；未定位到武进区级环评栏目；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+常州市武进区行政审批局,https://sthjj.changzhou.gov.cn/,https://sthjj.changzhou.gov.cn/class/ALFJELKI,,,同上,4条记录；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+经济开发区行政审批局,https://sthjj.changzhou.gov.cn/,https://sthjj.changzhou.gov.cn/class/ALFJELKI,,,同上,公告原文的简写，区县字段指向武进；即武进经济开发区行政审批局；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+江苏常州经济开发区管理委员会,https://jkq.changzhou.gov.cn/,https://jkq.changzhou.gov.cn/class/HCKQQKFM,https://jkq.changzhou.gov.cn/,,常州经开区门户 > 站内公示公告,经开区自有门户；已见“关于2026年9月16日建设项目生态环境影响评价文件受理情况的公示”等多条，但未定位到栏目页地址；2026-09-17核实：常州经开区环评栏目码 HCKQQKFM，由公示正文 URL（/html/jkq/…/HCKQQKFM_0914/）佐证；栏目页本身只渲染出页脚导航,已核实,2026-09-17
+常州经济开发区环保分局,https://jkq.changzhou.gov.cn/,https://jkq.changzhou.gov.cn/class/HCKQQKFM,,,同上,与经开区管委会同一发布平台；2026-09-17核实：常州经开区环评栏目码 HCKQQKFM，由公示正文 URL（/html/jkq/…/HCKQQKFM_0914/）佐证；栏目页本身只渲染出页脚导航,已核实,2026-09-17
+常州经济开发区生态环境分局,https://jkq.changzhou.gov.cn/,https://jkq.changzhou.gov.cn/class/HCKQQKFM,,,同上,同上，机构名的另一种写法；2026-09-17核实：常州经开区环评栏目码 HCKQQKFM，由公示正文 URL（/html/jkq/…/HCKQQKFM_0914/）佐证；栏目页本身只渲染出页脚导航,已核实,2026-09-17
+常州市生态环境局常州经开区分局,https://jkq.changzhou.gov.cn/,https://jkq.changzhou.gov.cn/class/HCKQQKFM,,,同上,同上，2条记录；2026-09-17核实：常州经开区环评栏目码 HCKQQKFM，由公示正文 URL（/html/jkq/…/HCKQQKFM_0914/）佐证；栏目页本身只渲染出页脚导航,已核实,2026-09-17
+常州国家高新区管理委员会,https://www.cznd.gov.cn/,https://www.cznd.gov.cn/class/FDCBILKO,https://www.cznd.gov.cn/class/FDCBILKO,https://www.cznd.gov.cn/class/FDCBILKO,常州高新区管委会（新北区人民政府）门户 > 部门公告 / 环境影响评价,门户上有“环境影响评价”栏目，含“作出的建设项目环境影响评价文件批复的公告”等；高新区与新北区合署,已核实,2026-09-16
+常州国家高新区生态环境局,https://www.cznd.gov.cn/,https://www.cznd.gov.cn/class/FDCBILKO,,,同上,3条记录，同一片区,未核实,2026-09-16
+常州高新技术产业开发区（新北）生态环境局,https://www.cznd.gov.cn/,https://www.cznd.gov.cn/class/FDCBILKO,,,同上,4条记录，机构名的另一种写法,未核实,2026-09-16
+常州高新区(新北区)政务服务管理办公室,https://www.cznd.gov.cn/,https://www.cznd.gov.cn/class/FDCBILKO,,,同上,184条记录；新北区审批事项在政务服务管理办公室,未核实,2026-09-16
+新北区数据局,https://www.cznd.gov.cn/,https://www.cznd.gov.cn/class/FDCBILKO,,,同上,45条记录；新北区数据局承接审批,未核实,2026-09-16
+家高新区(新北区)行政审批局,https://www.cznd.gov.cn/,https://www.cznd.gov.cn/class/FDCBILKO,,,同上,源数据缺首字（应为“国家高新区(新北区)行政审批局”），2条记录,未核实,2026-09-16
+新区(新北区)行政审批局,https://www.cznd.gov.cn/,https://www.cznd.gov.cn/class/FDCBILKO,,,同上,同上，1条记录,未核实,2026-09-16
+常州国家高新技术产业开发区(新北区)党政办公室,https://www.cznd.gov.cn/,https://www.cznd.gov.cn/class/FDCBILKO,,,同上,5条记录；该办公室是门户主办单位,未核实,2026-09-16
+常州国家高新技术产业开发区(新北区)农业农村局,https://www.cznd.gov.cn/,,,,新北区门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+常州国家高新技术产业开发区(新北区)住房和城乡建设局,https://www.cznd.gov.cn/,,,,新北区门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+常州市新北区生态环境局,https://www.cznd.gov.cn/,https://www.cznd.gov.cn/class/FDCBILKO,,,同上,1条记录，机构名的另一种写法,未核实,2026-09-16
+江苏省常州市新北区人民政府,https://www.cznd.gov.cn/,,,,新北区门户,公告落款写法，1条记录,无独立环评栏目,2026-09-16
+常州市鼎力区数据局,https://sthjj.changzhou.gov.cn/,https://sthjj.changzhou.gov.cn/class/ALFJELKI,,,市局栏目,“鼎力区”在常州不存在，应是源数据错字（疑为新北区或天宁区数据局）；16条记录，归属待人工确认；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+常州市钟楼区教育局,https://www.zhonglou.gov.cn/,,,,钟楼区政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+常州市钟楼区住房和城乡建设局,https://www.zhonglou.gov.cn/,,,,钟楼区政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+常州市交通运输局,https://www.changzhou.gov.cn/,,,,常州市政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16

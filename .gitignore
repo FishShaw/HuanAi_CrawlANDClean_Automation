@@ -1,15 +1,12 @@
-.venv/
+.venv
 __pycache__/
 *.py[cod]
 .ruff_cache/
 .DS_Store
 .env
 .env.*
-!.env.example
-*.pem
-*.key
-.nanjing_departments_cache/
-data/
-output/
-outputs/
-*.log
+# 抓取产生的原始记录（数据，不入库；用 crawl_nanjing_eia.py 重新生成）
+南京市环评受理_原始记录.json
+raw/
+by_city/
+trees/

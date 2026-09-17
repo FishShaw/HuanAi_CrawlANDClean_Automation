@@ -1,0 +1,34 @@
+﻿单位,首页入口,受理公示入口,审批前公示入口,审批后意见入口,入口（点击路径）,备注,核验情况,核验日期
+南通市数据局,https://shuju.nantong.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,首页 > 行政审批件 > 审批环节公示,南通市本级环评审批在数据局；栏目里同时有“[建设项目环评受理公示]”和“[建设项目环评审批决定公告]”，三类合并在同一栏目,已核实,2026-09-16
+南通市生态环境局,https://sthjj.nantong.gov.cn/,https://sthjj.nantong.gov.cn/ntshbj/jsxmgs/jsxmgs.html,https://sthjj.nantong.gov.cn/ntshbj/jsxmgs/jsxmgs.html,https://sthjj.nantong.gov.cn/ntshbj/jsxmgs/jsxmgs.html,首页 > 项目公示,市局“项目公示”栏目里受理、拟批准、审批决定混排；市局主要办海洋工程等类别，一般建设项目环评审批在市数据局,已核实,2026-09-16
+南通市生态环境局开发区分局(南通经济技术开发区生态环境局),https://sthjj.nantong.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,,,市数据局“审批环节公示”；开发区另见 netda.gov.cn 通知公告,南通经开区范围内的分局；未定位到分局独立栏目；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+南通市经济技术开发区管理委员会,https://www.netda.gov.cn/,https://www.netda.gov.cn/ntjjkfqrmzf/tzgg/,,,首页 > 通知公告（tzgg）,经开区自有门户；由搜索结果确认环评类公告发布在通知公告栏，未打开栏目页核对,未核实,2026-09-16
+南通高新区管委会,https://www.netda.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,,,市数据局“审批环节公示”,南通高新区在通州区范围内；未定位到高新区独立环评栏目；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+通州湾示范区行政审批局,https://tzw.nantong.gov.cn/,https://tzw.nantong.gov.cn/tzwjhldkfsfq/hbjg/,https://tzw.nantong.gov.cn/tzwjhldkfsfq/hbjg/,,首页 > 环保监管（hbjg）,通州湾江海联动开发示范区自有门户；已见“通州湾示范区行政审批局关于2026年6月1日环评文件受理公示”等多条,已核实,2026-09-16
+如皋市数据局,https://www.rugao.gov.cn/,https://www.rugao.gov.cn/rgszxzspj/gggs/,https://www.rugao.gov.cn/rgszxzspj/gggs/,https://www.rugao.gov.cn/rgszxzspj/gggs/,首页 > 数据局 > 公告公示,如皋市政府门户数据局栏目；含“（环评受理公示）”“（环评拟批准公示）”，三类合并在同一栏目,已核实,2026-09-16
+南通市如皋生态环境局,https://www.rugao.gov.cn/,https://www.rugao.gov.cn/rgszxzspj/gggs/,,,同上,如皋审批主体是数据局，分局负责办理；公示走同一栏目,未核实,2026-09-16
+通州区数据局,http://www.tongzhou.gov.cn/,http://www.tongzhou.gov.cn/tzqxzspj/spgs/spgs.html,http://www.tongzhou.gov.cn/tzqxzspj/spgs/spgs.html,http://www.tongzhou.gov.cn/tzqxzspj/spgs/spgs.html,首页 > 数据局 > 审批公示,通州区政府门户数据局栏目；含受理情况公示和“作出的建设项目生态环境影响评价文件审批决定的公告”,已核实,2026-09-16
+南通市通州生态环境局,http://www.tongzhou.gov.cn/,http://www.tongzhou.gov.cn/tzqxzspj/spgs/spgs.html,,,同上,通州审批主体是区数据局，分局负责办理,未核实,2026-09-16
+南通市通州区教育体育局,http://www.tongzhou.gov.cn/,,,,通州区政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+如东县数据局,https://www.rudong.gov.cn/,https://www.rudong.gov.cn/gggs/gggs.html,https://www.rudong.gov.cn/gggs/gggs.html,https://www.rudong.gov.cn/gggs/gggs.html,首页 > 公告公示,如东县政府门户公告公示栏；含“[受理公示]如东县数据局关于…建设项目环境影响评价文件受理情况的公示”,已核实,2026-09-16
+南通市如东生态环境局,https://www.rudong.gov.cn/,https://www.rudong.gov.cn/gggs/gggs.html,,,同上,如东审批主体是县数据局，分局负责办理,未核实,2026-09-16
+江苏省如东经济开发区管理委员会,https://www.rudong.gov.cn/,https://www.rudong.gov.cn/gggs/gggs.html,,,同上,未定位到开发区独立环评栏目,未核实,2026-09-16
+如东县交通运输局,https://www.rudong.gov.cn/,,,,如东县政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+南通市海门区数据局,https://www.haimen.gov.cn/,https://www.haimen.gov.cn/hmsrmzf/slgs/slgs.html,,,首页 > 受理公示（slgs）；另有政务服务中心“办理项目公示”（hmszwfwzx/blxmgs）,海门区政府门户受理公示栏；已见“【受理公示】…年产10万平方米…”等多条,已核实,2026-09-16
+南通市海门生态环境局,https://www.haimen.gov.cn/,https://www.haimen.gov.cn/hmsrmzf/slgs/slgs.html,,,同上,海门审批主体是区数据局，分局负责办理,未核实,2026-09-16
+海门经济技术开发区管理委员会,https://www.haimen.gov.cn/,https://www.haimen.gov.cn/hmsrmzf/slgs/slgs.html,,,同上,未定位到开发区独立环评栏目,未核实,2026-09-16
+南通市海门区城市管理局,https://www.haimen.gov.cn/,,,,海门区政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+南通市海门区公安局,https://www.haimen.gov.cn/,,,,海门区政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+南通市海门区发展和改革委员会,https://www.haimen.gov.cn/,,,,海门区政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+南通市海门区民政局,https://www.haimen.gov.cn/,,,,海门区政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+海门市农业资源开发局,https://www.haimen.gov.cn/,,,,海门区政府门户 > 部门信息,其他部门（旧称海门市），按约定只给主页,无独立环评栏目,2026-09-16
+南通市海安生态环境局,https://shuju.nantong.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,,,市数据局“审批环节公示”；海安市政府门户另有本地栏目（本次未定位）,海安738条是南通区县里最多的；未能定位海安市政府门户的环评栏目地址，暂指向市数据局专栏；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+海安市数据局,https://shuju.nantong.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,,,同上,同上，未定位到海安市政府门户栏目；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+海安经济技术开发区管委会行政审批局,https://shuju.nantong.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,,,同上,未定位到海安经开区独立栏目；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+高新区行政审批局,https://shuju.nantong.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,,,同上,公告原文的简写；区县字段为海安，即海安高新区审批局；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+海安市交通运输局,https://shuju.nantong.gov.cn/,,,,海安市政府门户 > 部门信息（本次未定位到门户地址）,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+南通市启东生态环境局,https://shuju.nantong.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,,,市数据局“审批环节公示”；启东市政府门户另有本地栏目（本次未定位）,未能定位启东市政府门户的环评栏目地址；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+启东市数据局,https://shuju.nantong.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,,,同上,同上；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+启东市自然资源和规划局,https://shuju.nantong.gov.cn/,,,,启东市政府门户 > 部门信息（本次未定位到门户地址）,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
+南通市崇川区行政审批局,https://shuju.nantong.gov.cn/,https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html,,,市数据局“审批环节公示”,崇川区是南通主城区，未定位到区级独立环评栏目；栏目已打开确认，本行单位按公示标题在该栏目内筛选,已核实,2026-09-17
+南通市司法局,https://www.nantong.gov.cn/,,,,南通市政府门户 > 部门信息,其他部门，按约定只给主页,无独立环评栏目,2026-09-16
