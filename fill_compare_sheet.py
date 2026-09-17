@@ -66,8 +66,9 @@ class Sheet:
         return rows
 
 
-def load_tree(province: str) -> dict:
-    for f in [*sorted((HERE / "raw").glob(f"{province[:2]}*.json")), *sorted((HERE / "trees").glob(f"{province}_*.json"))]:
+def load_tree(province: str, raw_dir: Path | None = None) -> dict:
+    raw_dir = raw_dir or HERE / "raw"
+    for f in [*sorted(raw_dir.glob(f"{province[:2]}*.json")), *sorted((HERE / "trees").glob(f"{province}_*.json"))]:
         tree = json.loads(f.read_text(encoding="utf-8"))["地区树"]
         if tree["编码"] == province:
             return tree
@@ -79,13 +80,14 @@ def load_entries() -> dict[tuple[str, str], dict]:
     for f in sorted((HERE / "entries").glob("*.csv")):
         city = f.stem.split("_", 1)[1]
         city = "—" if city == "省级及国家" else city
-        for r in csv.DictReader(open(f, encoding="utf-8-sig")):
-            out[(city, r["单位"])] = r
+        with open(f, encoding="utf-8-sig") as fh:
+            for r in csv.DictReader(fh):
+                out[(city, r["单位"])] = r
     return out
 
 
-def plan(sheet_rows: list[list[str]], province: str):
-    tree = load_tree(province)
+def plan(sheet_rows: list[list[str]], province: str, raw_dir: Path | None = None):
+    tree = load_tree(province, raw_dir)
     code_names = {tree["编码"]: (tree["简称"], "", "")}
     unit_code: dict[tuple[str, str], str] = {("—", "省级"): tree["编码"]}
     for c in tree["市"]:
@@ -102,7 +104,9 @@ def plan(sheet_rows: list[list[str]], province: str):
         raise SystemExit(f"没有 {approvers.name}，先跑 merge_jiangsu.py --province {province}")
     by_code: dict[str, list[dict]] = {}
     unmatched = []
-    for u in csv.DictReader(open(approvers, encoding="utf-8-sig")):
+    with open(approvers, encoding="utf-8-sig") as fh:
+        approver_rows = list(csv.DictReader(fh))
+    for u in approver_rows:
         area = zone_map.get((u["城市"], u["地区"]), u["地区"])
         code = unit_code.get((u["城市"], area))
         if code:
