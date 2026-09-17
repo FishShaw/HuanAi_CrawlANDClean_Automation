@@ -37,12 +37,24 @@ entries/<市>.csv → build_entries_xlsx.py → <省>环评单位_官网及公�
 .venv/bin/python merge_jiangsu.py --province 320000            # 全省合并
 .venv/bin/python merge_jiangsu.py --field export               # 受理/监督单位字段口径
 .venv/bin/python fill_compare_sheet.py --url <飞书> --sheet-id <id>   # 先出计划，加 --run 才写
-.venv/bin/python -m ruff check *.py
+.venv/bin/python scripts/dev.py check                     # lint + 离线回归测试
 ```
 
-没有测试文件。**改清洗规则后的回归**：重跑 `merge_jiangsu.py`，江苏两份 CSV 应逐字节不变（有意改动除外，
-要能逐条解释差异）；南京那 18 个 + 省级/国家 2 个应与 `南京市环评受理单位.csv` 的 20 个逐个同名；
-输出里 保留 + 空 + 删除 = 原始条数。
+## 分支保护（与 main 同一套本地机制）
+
+**`feature/nanjing-eia-depts` 是主干，不能直接提交**（pre-commit 钩子拦截）。所有改动走「分支 → 合并」：
+
+```bash
+.venv/bin/python scripts/dev.py start add-zhejiang          # 从主干开 eia/add-zhejiang，要求工作区干净
+git add <文件> && git commit -m "..."                        # 钩子对暂存快照跑 ruff
+git switch feature/nanjing-eia-depts
+.venv/bin/python scripts/dev.py merge eia/add-zhejiang      # 强制合并提交，跑 lint + 全部离线测试，失败自动撤销
+```
+
+- 钩子在 `.githooks/`，靠 `core.hooksPath=.githooks`；新 worktree / 克隆后跑一次 `scripts/dev.py setup`。
+- 测试在 `tests/test_pipeline.py`，离线（不请求 i-ESG、不写飞书），`raw/` 从当前检出读取；没有 `raw/` 时依赖它的测试跳过。
+- **改清洗规则导致江苏 CSV 变化时**，测试会失败：确认差异都能逐条解释后，把新的 CSV 和测试里的数字一起提交。
+- 这是本地防误操作，`--no-verify` 能绕过，不要用它绕检查。仓库没有远端，没有 GitHub PR。
 
 ## 接口（逆向得到，站点无公开文档）
 
