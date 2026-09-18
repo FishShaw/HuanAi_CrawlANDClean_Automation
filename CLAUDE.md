@@ -40,21 +40,28 @@ entries/<市>.csv → build_entries_xlsx.py → <省>环评单位_官网及公�
 .venv/bin/python scripts/dev.py check                     # lint + 离线回归测试
 ```
 
-## 分支保护（与 main 同一套本地机制）
+## 分支保护与改动流程
 
-**`feature/nanjing-eia-depts` 是主干，不能直接提交**（pre-commit 钩子拦截）。所有改动走「分支 → 合并」：
+远端 `origin` = https://github.com/FishShaw/HuanAi_CrawlANDCleanForQingLv （私有）。
+`main` 和 `feature/nanjing-eia-depts`（本流水线的主干）在 GitHub 上都开了分支保护：
+**必须走 PR，禁止直推、强推和删除分支，管理员同样受限**（需要审批数 0，可以自己合自己的 PR）。
+本地还有一层钩子：主干上的直接提交会被 pre-commit 拦掉。
 
 ```bash
-.venv/bin/python scripts/dev.py start add-zhejiang          # 从主干开 eia/add-zhejiang，要求工作区干净
-git add <文件> && git commit -m "..."                        # 钩子对暂存快照跑 ruff
-git switch feature/nanjing-eia-depts
-.venv/bin/python scripts/dev.py merge eia/add-zhejiang      # 强制合并提交，跑 lint + 全部离线测试，失败自动撤销
+.venv/bin/python scripts/dev.py start add-zhejiang     # 从主干开 eia/add-zhejiang，要求工作区干净
+git add <文件> && git commit -m "..."                   # 钩子对暂存快照跑 ruff
+.venv/bin/python scripts/dev.py check                  # 推之前自己先跑 lint + 离线回归
+git push -u origin eia/add-zhejiang
+gh pr create --base feature/nanjing-eia-depts --fill    # 在 GitHub 上合并，然后 git pull 回来
 ```
 
+- **不要在本地合并主干再推**：本地合并提交推不上去（保护要求 PR），只能在 GitHub 上合。
+  `scripts/dev.py merge` 只在没有远端时才有意义，留着作为离线兜底。
 - 钩子在 `.githooks/`，靠 `core.hooksPath=.githooks`；新 worktree / 克隆后跑一次 `scripts/dev.py setup`。
 - 测试在 `tests/test_pipeline.py`，离线（不请求 i-ESG、不写飞书），`raw/` 从当前检出读取；没有 `raw/` 时依赖它的测试跳过。
+  **GitHub 上没有 CI**，PR 不会自动跑测试，合并前自己跑 `dev.py check`。
 - **改清洗规则导致江苏 CSV 变化时**，测试会失败：确认差异都能逐条解释后，把新的 CSV 和测试里的数字一起提交。
-- 这是本地防误操作，`--no-verify` 能绕过，不要用它绕检查。仓库没有远端，没有 GitHub PR。
+- 本地钩子能被 `--no-verify` 绕过，GitHub 的保护不能——远端才是真正的闸门。
 
 ## 接口（逆向得到，站点无公开文档）
 
