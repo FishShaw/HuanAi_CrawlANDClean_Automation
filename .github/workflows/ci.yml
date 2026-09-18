@@ -1,0 +1,23 @@
+name: CI
+
+# 主干受保护、只能通过 PR 改动，这里给 PR 和主干自身各跑一遍 lint + 离线回归。
+on:
+  pull_request:
+    branches: [feature/nanjing-eia-depts]
+  push:
+    branches: [feature/nanjing-eia-depts]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # 只需要 ruff：离线测试导入的模块都只用标准库，抓取脚本的 httpx / pycryptodome 不参与测试
+      - run: pip install ruff==0.12.12
+      - run: ruff check .
+      # raw/ 是抓来的原始记录，不入库；CI 里没有它，依赖它的江苏回归与飞书布局用例会自动跳过，
+      # 只有清洗口径（role_of）那组会真正执行。本地合并前请跑 scripts/dev.py check 做完整回归。
+      - run: python -m unittest discover -s tests -v
