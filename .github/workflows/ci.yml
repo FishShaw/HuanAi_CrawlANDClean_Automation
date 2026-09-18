@@ -1,0 +1,23 @@
+name: CI
+
+# main 受保护、只能通过 PR 改动，这里给 PR 和 main 自身各跑一遍 lint + 离线测试。
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      # 与 scripts/dev.py test 一致：南京工作流的离线自测 + tests/ 下的用例。
+      # 不请求 i-ESG，不覆盖正式产出。
+      - run: python nanjing_departments_workflow.py --self-test
+      - run: python -m unittest discover -s tests -v
