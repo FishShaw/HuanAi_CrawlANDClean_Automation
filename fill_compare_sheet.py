@@ -170,23 +170,32 @@ def main() -> None:
         print("飞书表已与本地结果一致，无需写入。")
         return
     fresh = len(body) == len(codes) and not any(any(r[4:12]) for r in body)
-    if not fresh:
-        raise SystemExit("飞书表既不是空白模板（一代码一行、E–L 全空），也不等于本地结果；"
+    # 只补空格：行数与内容都对得上，只是表里有些格还空着（例如先填了单位、后来才查到入口）。
+    # 表里任何一个非空格与本地结果不同，就仍然拒绝——那是手工改动，不覆盖。
+    fillable = (not fresh and len(body) == len(want)
+                and all(a == b or not a for row_a, row_b in zip(body, want)
+                        for a, b in zip(row_a, row_b)))
+    if not (fresh or fillable):
+        raise SystemExit("飞书表既不是空白模板（一代码一行、E–L 全空），也不是「只差一些空格」的状态；"
                          "为免覆盖手工改动，不写。确认后先还原表格或手动处理差异。")
+    if fillable:
+        blanks = sum(1 for row_a, row_b in zip(body, want)
+                     for a, b in zip(row_a, row_b) if not a and b)
+        print(f"表里 {blanks} 个空格可以补（其余非空格与本地一致，不动）。")
     if not args.run:
         print("计划已生成。确认无误后加 --run 写入。")
         return
 
-    # 自下而上插行，上方行号不变
+    # 自下而上插行，上方行号不变；只补空格时行已经是拆开的，不用插
     row_of = {code: i + 2 for i, (code, _) in enumerate(codes)}
-    extra = {code: n - 1 for code, n in _counts(layout).items() if n > 1}
+    extra = {} if fillable else {code: n - 1 for code, n in _counts(layout).items() if n > 1}
     for code in sorted(extra, key=lambda c: -row_of[c]):
         sheet.cli("+dim-insert", "--position", str(row_of[code] + 1), "--count", str(extra[code]),
                   "--inherit-style", "before")
     # 新行的 A–D 按连续块写（代码写成数字，和原列一致）
     r, block = 2, None
     blocks = []
-    for is_new, row in layout:
+    for is_new, row in ([] if fillable else layout):
         if is_new:
             if block and block[0] + len(block[1]) == r:
                 block[1].append(row[:4])
