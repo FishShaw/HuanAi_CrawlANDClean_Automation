@@ -47,7 +47,8 @@ SUFFIX = re.compile(r"(局|厅|部|委|会|中心|办公室|政府|院|科|处|�
 # 建设单位被误填进单位列，公司不是审批机关
 COMPANY = re.compile(r"(公司|厂|集团|中心有限|事务所)$")
 # 内设科室 / 办事窗口，归并到所属单位
-SECTION = re.compile(r"(环评科|固废科|审批科|行政审批服务科|环评管理科|环评窗口|窗口)$")
+SECTION = re.compile(r"(环评科|固废科|审批科|行政审批服务科|环评管理科|环评窗口|窗口"
+                     r"|环境影响评价管理科|环境影响评价科|行政审批科\(监督管理科\))$")
 # 明显的错字 / 残句
 TYPO = re.compile(r"(行审|环许|管审|政服环)")
 # 开发区 / 新区 / 园区 / 度假区：地区树里没有，按名称识别
@@ -70,9 +71,19 @@ DATE_PREFIX = re.compile(r"^\d{4}年\d{1,2}月\d{1,2}日")
 # 这种笼统写法压过正规的「苏州市昆山生态环境局」
 PROPER = re.compile(r"(局|厅|部|委员会|管委会|中心|办公室|政府|院|司|署)$|\)$|）$")
 # 镇 / 街道级机构：地区树只到区县，镇一级只能从名称里认
-TOWN = re.compile(r"[一-龥]{2,6}?(镇|街道|乡)")
+# 「住房和城乡建设局」里的「城乡」不是乡级机构，排掉
+TOWN = re.compile(r"[一-龥]{2,6}?(镇|街道|(?<!城)乡)")
 # 只有纯中文（可带括号）的名称才尝试截断回收，带字母数字或分隔符的是乱码不是截断
 TRUNCATABLE = re.compile(r"^[一-龥()（）]+$")
+# 派驻政务服务中心 / 市民中心的窗口式写法，名称里往往没有地名（安徽大量出现：
+# 「行政服务中心环保局」「政务服务中心生态环境分局」「驻合肥市政务服务管理局生态环境窗口」）。
+# 这类才允许拿记录的区县字段当归属证据——不含这些线索的裸名（「生态环境分局」）仍然按认不出地区删除。
+WINDOW = re.compile(r"(政务服务|行政服务|市民服务|服务中心|大厦)")
+# 公告落款里的派驻前缀，判断地区前缀时要先去掉，否则「驻合肥市…」会被当成「驻合肥」这个外地地名
+STATION = re.compile(r"^驻")
+# 地区树里没有、但确实是一级行政管理区的名字，按省编码登记（需求方确认后再加）。
+# 安徽：毛集实验区 = 淮南市毛集社会发展综合实验区，区县字段还常被标成凤台/大通，只能按名称认。
+EXTRA_ZONES = {"340000": ("毛集实验区",)}
 
 
 def core(place: str) -> str:
@@ -84,6 +95,8 @@ class Places:
     """从地区树生成的地名索引，全部按省来，不含任何写死的地名。"""
 
     def __init__(self, tree: dict):
+        self.code = tree["编码"]
+        self.extra_zones = EXTRA_ZONES.get(self.code, ())
         self.prov = tree["名称"]
         self.prov_core = core(self.prov)
         self.cities = tree["市"]
@@ -127,8 +140,16 @@ class Places:
         """名称里写明的该市区县，返回去掉「区/县」的核心名。"""
         rest = self.strip_city_prefix(name, city)
         for d in sorted(city["区县"], key=lambda d: -len(d["名称"])):
-            if core(d["名称"]) and core(d["名称"]) in rest:
-                return core(d["名称"])
+            short = core(d["名称"])
+            if not short:
+                continue
+            # 单字区县名（马鞍山和县、徐州丰县）必须连着「县/区/市」才算，否则
+            # 「住房和城乡建设局」里的「和」会被当成和县
+            if len(short) == 1:
+                if any(short + suf in rest for suf in ("县", "区", "市")):
+                    return short
+            elif short in rest:
+                return short
         return None
 
     def zone_in(self, name: str, district: str = "") -> str | None:
@@ -138,6 +159,9 @@ class Places:
         才退而用记录的区县字段定位。不能反过来一律用区县——江北新区横跨浦口/六合/栖霞，
         按区县分会把同一个管委会拆成好几条。
         """
+        for z in self.extra_zones:
+            if z in name:
+                return z
         m = ZONE.search(name)
         if not m:
             return None
@@ -146,21 +170,27 @@ class Places:
         # 开发区名是全名里搜出来的，头部常粘着机构词：「淮安市生态环境局开发区分局」
         # 的头是「生态环境局」，不是地名。从最后一个机构字之后截断。
         head = re.split(r"[局厅委办部科处所站心]", head)[-1]
+        # 切完只剩一个字的是机构词的尾巴（「…管委会高新区」剩「会」），不是地名；
+        # 这种情况按区县字段定位，别当成市本级——市本级只留给「南京经济技术开发区」这类整头是市名的
+        split_leftover = len(head) == 1 and head != raw_head
+        if split_leftover:
+            head = ""
         for word in sorted(self.city_words, key=len, reverse=True):
             head = head.replace(word, "")
-        head = re.sub(r"^(省|市)", "", head)
+        # 要反复剥：「安徽省宣城市广德县…」去掉省名市名后剩「省市广德县」，只剥一次会留下「市广德」
+        head = re.sub(r"^(省|市)+", "", head)
         head = re.sub(r"[市区县]$", "", head)  # 「张家港市开发区」和「张家港开发区」是一个
         # 单字头是名称被截断的残留（「州经济开发区」少了「常」），不可信，改用区县
         if len(head) > 1:
             return head + kind
         # 名称里写了省市名（「南京经济技术开发区」），那就是市级的，不要再按区县细分
-        if raw_head and not head:
+        if raw_head and not head and not split_leftover:
             return "本级" + kind
         return (core(district) or head or "本级") + kind
 
     def is_misplaced(self, name: str) -> bool:
         """标错地区：开头的省市不属于本省。"""
-        m = PLACE_PREFIX.match(name)
+        m = PLACE_PREFIX.match(STATION.sub("", name))
         return bool(m) and core(m.group(1)) not in self.allowed
 
     def unique_district(self, name: str) -> tuple[str, str] | None:
@@ -179,9 +209,9 @@ class Places:
         zone = self.zone_in(name, district)
         if zone:
             return (city["名称"], zone)
-        district = self.district_in(name, city)
-        if district:
-            return (city["名称"], district)
+        named_district = self.district_in(name, city)  # 别覆盖 district：下面的窗口规则还要用它
+        if named_district:
+            return (city["名称"], named_district)
         # 名称里的区县不属于查询市（被站点错标到别的市名下），全省唯一命中才认
         elsewhere = self.unique_district(name)
         if elsewhere:
@@ -198,11 +228,20 @@ class Places:
         town = TOWN.search(name)
         if town:
             return (city["名称"], town.group(0))
+        # 派驻窗口：名称里没有地名，但区县字段是证据，且该区县确属本市
+        if WINDOW.search(name) and district:
+            d = core(district)
+            if any(core(x["名称"]) == d or core(x.get("简称") or "") == d for x in city["区县"]):
+                return (city["名称"], d)
         return None
 
     def function_of(self, name: str) -> str:
         """职能键：生态环境口、行政审批口，或者具体的委办局名称。"""
         if ECO.search(name):
+            return "生态环境"
+        # 「蚌埠市燕山路管委会高新区生态环境分局」是环保派出分局，不能因为名字里有「管委会」
+        # 就并进该开发区的审批口
+        if ROLE_ECO.search(name) and ADMIN.search(name):
             return "生态环境"
         if ADMIN.search(name):
             return "行政审批"
@@ -317,7 +356,9 @@ def clean(records: list[tuple[str, str, str, str]], places: Places) -> list[dict
         # 没有区县佐证就没法判断归属，宁可删掉
         if len(name) < 3 or not district or not TRUNCATABLE.search(name):
             continue
-        hits = {name_group[k] for k in stats
+        # 只跟本来就成组的写法比：本轮刚回收进 stats 的名字还没有分组，拿它当参照会 KeyError，
+        # 也会让回收结果取决于遍历顺序
+        hits = {g for k, g in name_group.items()
                 if k[1] == city_code and stats[k]["district"] == district
                 and k[0] != name and (k[0].startswith(name) or k[0].endswith(name))}
         if len(hits) == 1:
@@ -351,7 +392,9 @@ def clean(records: list[tuple[str, str, str, str]], places: Places) -> list[dict
 # 故意比 ECO/ADMIN 宽：那两个是归并分组用的，放宽会改变合并结果；这里只打标签。
 # 「生态局」「生态环局」「生态境局」是源数据漏字，「安环局」是张家港的安全环保合署机构。
 ROLE_ECO = re.compile(r"生态环境|环境保护|环保|生态局|生态环局|生态境局|安环局|环境监察")
-ROLE_ADMIN = re.compile(r"行政审批|审批局|审批大厅|数据局|数据管理局|政务服务|政务中心|行政服务|一站式服务")
+# 「改革创新局」是安徽自贸试验区片区、部分高新区承接审批职能的机构
+ROLE_ADMIN = re.compile(r"行政审批|审批局|审批大厅|数据局|数据管理局|政务服务|政务中心|行政服务"
+                        r"|一站式服务|改革创新局|数据资源")
 ROLE_ZONE = re.compile(r"管理委员会|管委会")
 
 

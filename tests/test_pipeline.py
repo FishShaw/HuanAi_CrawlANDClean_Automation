@@ -41,11 +41,60 @@ class RoleTest(unittest.TestCase):
             "淮安工业园区": "开发区管委会",         # 园区名本身当发布主体
             "扬州市邗江区司法局": "其他部门",
             "泰州市水利局医药高新区分局": "其他部门",  # 前面带了别的局名，不是生态环境分局
+            "安徽自贸试验区蚌埠片区改革创新局": "行政审批",   # 安徽自贸区/高新区承接审批的机构
+            "定远县数据资源管理局": "行政审批",
+            "驻合肥市政务服务管理局生态环境窗口": "生态环境",
+            "安庆市公安局森林分局": "其他部门",
             "江苏省扬州市宝应县人民政府": "其他部门",
         }
         for name, role in cases.items():
             with self.subTest(name=name):
                 self.assertEqual(cj.role_of(name), role)
+
+
+class PlaceRuleTest(unittest.TestCase):
+    """地区判定的几条规则，用一棵手写的小地区树，不依赖抓来的原始记录。"""
+
+    TREE = {
+        "编码": "340000", "名称": "安徽省", "简称": "安徽",
+        "市": [
+            {"编码": "340100", "名称": "合肥市", "简称": "合肥",
+             "区县": [{"编码": "340111", "名称": "包河区", "简称": "包河"},
+                     {"编码": "340124", "名称": "庐江县", "简称": "庐江"}]},
+            {"编码": "340500", "名称": "马鞍山市", "简称": "马鞍山",
+             "区县": [{"编码": "340523", "名称": "和县", "简称": "和"}]},
+            {"编码": "340400", "名称": "淮南市", "简称": "淮南", "区县": []},
+        ],
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.p = cj.Places(cls.TREE)
+
+    def test_single_char_district_needs_suffix(self):
+        """单字区县名（和县）必须连着县/区/市：否则「住房和城乡建设局」里的「和」会被当成和县。"""
+        self.assertEqual(self.p.area_of("马鞍山市和县生态环境分局", "340500"), ("马鞍山市", "和"))
+        self.assertEqual(self.p.area_of("马鞍山市住房和城乡建设局", "340500"), ("马鞍山市", "市本级"))
+
+    def test_station_prefix_not_a_place(self):
+        """「驻合肥市…」的驻字不能让地区前缀判定把它当成外地单位。"""
+        name = "驻合肥市政务服务管理局生态环境"
+        self.assertFalse(self.p.is_misplaced(name))
+        self.assertEqual(self.p.area_of(name, "340100"), ("合肥市", "市本级"))
+        self.assertTrue(self.p.is_misplaced("郑州市生态环境局"))
+
+    def test_window_uses_district_field(self):
+        """派驻窗口式写法没有地名，用记录的区县字段定位；裸名仍然认不出地区。"""
+        self.assertEqual(self.p.area_of("行政服务中心环保局", "340100", "庐江"), ("合肥市", "庐江"))
+        self.assertIsNone(self.p.area_of("行政服务中心环保局", "340100", ""))
+        self.assertIsNone(self.p.area_of("生态环境分局", "340100", "庐江"))
+        # 区县字段指向别的市（站点标错）时不认
+        self.assertIsNone(self.p.area_of("行政服务中心环保局", "340400", "庐江"))
+
+    def test_extra_zone(self):
+        """地区树里没有的管理区，按省编码登记后才认（安徽毛集实验区）。"""
+        self.assertEqual(self.p.area_of("毛集实验区环保局", "340400"), ("淮南市", "毛集实验区"))
+        self.assertIsNone(cj.Places({**self.TREE, "编码": "999999"}).area_of("毛集实验区环保局", "340400"))
 
 
 @unittest.skipUnless(HAS_RAW, f"没有原始记录 {RAW}")
@@ -70,8 +119,8 @@ class JiangsuRegressionTest(unittest.TestCase):
                 self.assertEqual((ROOT / name).read_bytes(), data, f"{name} 与入库版本不一致")
 
     def test_counts(self):
-        self.assertEqual(len(self.units), 335)
-        self.assertEqual(sum(1 for u in self.units if u["职能"] != "其他部门"), 245)
+        self.assertEqual(len(self.units), 334)
+        self.assertEqual(sum(1 for u in self.units if u["职能"] != "其他部门"), 244)
         self.assertEqual(sum(int(u["记录数"]) for u in self.units), 84168)
 
     def test_nanjing_reference(self):
@@ -101,7 +150,7 @@ class CompareSheetPlanTest(unittest.TestCase):
             rows += [[d["编码"], "江苏", c["简称"], d["简称"], *[""] * 8] for d in c["区县"]]
         _, codes, layout, unmatched, no_unit, not_in_tree = fcs.plan(rows, "320000", RAW)
         self.assertEqual(len(codes), 109)
-        self.assertEqual(len(layout), 164)
+        self.assertEqual(len(layout), 163)
         self.assertEqual(len(unmatched), 85)
         self.assertEqual(sorted(no_unit), sorted(["徐州鼓楼", "徐州云龙", "徐州泉山", "宿迁宿城"]))
         self.assertEqual(not_in_tree, [])
