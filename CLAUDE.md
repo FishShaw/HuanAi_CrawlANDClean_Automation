@@ -60,7 +60,8 @@ gh pr create --base feature/nanjing-eia-depts --fill    # 在 GitHub 上合并�
   `scripts/dev.py merge` 只在没有远端时才有意义，留着作为离线兜底。
 - 钩子在 `.githooks/`，靠 `core.hooksPath=.githooks`；新 worktree / 克隆后跑一次 `scripts/dev.py setup`。
 - 测试在 `tests/test_pipeline.py`，离线（不请求 i-ESG、不写飞书），`raw/` 从当前检出读取；没有 `raw/` 时依赖它的测试跳过。
-  **GitHub 上没有 CI**，PR 不会自动跑测试，合并前自己跑 `dev.py check`。
+  GitHub Actions（`.github/workflows/ci.yml`）在 PR 和主干推送时跑 ruff + 这套测试，但 CI 里没有 `raw/`，
+  江苏回归等 5 项会跳过，只有清洗口径那项真跑——**完整回归仍要本地 `dev.py check`**。
 - **改清洗规则导致江苏 CSV 变化时**，测试会失败：确认差异都能逐条解释后，把新的 CSV 和测试里的数字一起提交。
 - 本地钩子能被 `--no-verify` 绕过，GitHub 的保护不能——远端才是真正的闸门。
 
