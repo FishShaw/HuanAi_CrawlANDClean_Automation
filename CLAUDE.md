@@ -14,7 +14,12 @@ raw/<省前两位>*.json → merge_jiangsu.py --province → <省>环评单位.c
                                                    + <省>环评审批机构.csv（交付口径）
 <省>环评审批机构.csv → fill_compare_sheet.py → 飞书比对子表（一单位一行）
 entries/<市>.csv → build_entries_xlsx.py → <省>环评单位_官网及公示入口.xlsx（目前写死江苏）
+<省>环评单位.csv + refs/* + entries/ → build_authority_master.py → <省>受理单位主数据.csv（+飞书子表）
 ```
+
+`refs/` 放**入库的参照快照**（行政区划树、开发区维表、共现关系、入口表、归并候选），
+和 `raw/`、`trees/`、`by_city/` 这些 gitignore 的运行时产物分开。`ZONE_DISTRICT` 现在从
+`refs/zones_<省>.csv` 派生，原字面量留作 `_ZONE_DISTRICT_LEGACY` 回归基线，测试断言两者相等。
 
 文件名带 `jiangsu` 是历史原因，引擎按 `--province` 通用。`cities/` 是生成的薄封装，**改规则只改
 `crawl_jiangsu_eia.py` / `clean_jiangsu_eia.py`**，不要改封装。`crawl_nanjing_eia.py` / `clean_nanjing_eia.py`
@@ -28,6 +33,7 @@ entries/<市>.csv → build_entries_xlsx.py → <省>环评单位_官网及公�
 | `docs/新省份操作手册.md` | 换省八步、检查点、与需求方确认过的口径、还没通用的地方 |
 | `docs/江苏试点记录.md` | 江苏各市数据量、飞书比对结果、入口核实结果、与 main 工作流的口径差异 |
 | `docs/安徽记录.md` | 安徽结果、安徽特有写法与对应规则、暴露出的原有缺陷 |
+| `docs/江苏试点记录.md` 末节 | 受理单位主数据表：为什么「地区」列不能当标识符、归属关系的三条证据、南京/苏州标题括号的语义差异 |
 
 ## 命令
 

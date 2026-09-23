@@ -165,3 +165,48 @@ class CompareSheetPlanTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MasterDataTest(unittest.TestCase):
+    """主数据表的参照文件：入库快照与维表，无 raw/ 也要能跑。"""
+
+    def test_zone_district_derived_matches_legacy(self):
+        """ZONE_DISTRICT 改成从 refs/zones_*.csv 派生，必须与原字面量逐条相等。"""
+        for prov, legacy in fcs._ZONE_DISTRICT_LEGACY.items():
+            self.assertEqual(fcs.load_zone_district(prov), legacy, prov)
+
+    def test_zone_district_keys_still_produced(self):
+        """ZONE_DISTRICT 的键是清洗产物的键。
+
+        改了 zone_in() 之后某个键不再产生时，那些单位只会悄悄掉进「无区县代码」清单，
+        不报错也不告警。这条断言把静默失效变成红灯。
+        """
+        rows = read_csv(ROOT / "江苏省环评审批机构.csv")
+        produced = {(r["城市"], r["地区"]) for r in rows}
+        missing = sorted(set(fcs.ZONE_DISTRICT["320000"]) - produced)
+        self.assertEqual(missing, [], f"这些映射键已不再由清洗产生：{missing}")
+
+    def test_area_tree_snapshot_matches_raw(self):
+        """入库快照必须与运行时抓的地区树一致，否则下游区划码会悄悄漂移。"""
+        if not HAS_RAW:
+            self.skipTest(f"没有原始记录 {RAW}")
+        snap = fcs.load_tree("320000", ROOT / "refs" / "__absent__")
+        live = fcs.load_tree("320000", RAW)
+        self.assertEqual(snap, live)
+
+    def test_zone_registry_covers_all_zone_keys(self):
+        """开发区维表要盖住清洗产出的每一个开发区/园区键，否则主表会漏挂片区。"""
+        tree = fcs.load_tree("320000")
+        cities = {m["名称"] for m in tree["市"]}
+        shorts = {(m["名称"], q["简称"]) for m in tree["市"] for q in m.get("区县", [])}
+        cores = {(c, fcs.core(s)) for c, s in shorts}
+        zones = {(r["city"], r["source_label"])
+                 for r in read_csv(ROOT / "refs" / "zones_320000.csv")}
+        missing = set()
+        for r in read_csv(ROOT / "江苏省环评单位.csv"):
+            key = (r["城市"], r["地区"])
+            if r["地区"] in ("市本级", "省级", "国家") or key in shorts or key in cores:
+                continue
+            if r["城市"] in cities and key not in zones:
+                missing.add(key)
+        self.assertEqual(sorted(missing), [], f"维表缺这些片区键：{sorted(missing)}")
