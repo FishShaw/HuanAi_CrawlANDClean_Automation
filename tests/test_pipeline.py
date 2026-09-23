@@ -210,3 +210,74 @@ class MasterDataTest(unittest.TestCase):
             if r["城市"] in cities and key not in zones:
                 missing.add(key)
         self.assertEqual(sorted(missing), [], f"维表缺这些片区键：{sorted(missing)}")
+
+
+class NoticeResolveTest(unittest.TestCase):
+    """受理公示的解析规则。用例取自南京 300 条 / 常州栏目的真实写法，离线跑。
+
+    规则顺序是硬要求：先判辐射再判地区。南京市局栏目 300 条里，标题括号有三种语义
+    混着——发文机关 166、业务类别（辐射）79、项目属地 34——只取括号会造出一个
+    叫「辐射」的区县。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import resolve_notice as rn
+        cls.rn = rn
+        cls.tree = fcs.load_tree("320000")
+        cls.places = cj.Places(cls.tree)
+        cls.city = {c["名称"]: c for c in cls.tree["市"]}
+
+    def cls_(self, city, title, src, locs, org=""):
+        return self.rn.classify(title, src, locs, self.city[city], self.places, org)
+
+    def test_bracket_is_publisher(self):
+        """括号=发文机关：来源解析出的区与括号一致。"""
+        r = self.cls_("南京市",
+                      "南京市生态环境局关于2026年9月23日建设项目环境影响评价文件 受理情况的公示（玄武）",
+                      "南京市玄武生态环境局", ["江苏省南京市玄武区龙蟠路9号兴隆大厦负一、三、四层"])
+        self.assertEqual(r["bracket_meaning"], "发文机关")
+        self.assertEqual(r["approval_district"], "玄武")
+        self.assertEqual(r["project_districts"], ["玄武"])
+
+    def test_bracket_is_project_location(self):
+        """括号=项目属地：市局代发，审批地是市本级、项目地是高淳。高淳 29 条全是这种。"""
+        r = self.cls_("南京市",
+                      "南京市生态环境局关于2025年8月1日建设项目环境影响评价文件受理情况的公示（高淳）",
+                      "南京市生态环境局", ["南京市高淳区古柏街道"])
+        self.assertEqual(r["bracket_meaning"], "项目属地")
+        self.assertEqual(r["approval_district"], "市本级")
+        self.assertEqual(r["project_districts"], ["高淳"])
+
+    def test_radiation_is_not_a_district(self):
+        """括号=业务类别：辐射必须先判，否则会被当成区县名。"""
+        r = self.cls_("南京市",
+                      "2026年09月17日南京市生态环境局受理建设项目环评文件情况公示(辐射)",
+                      "南京市生态环境局", ["南京江北新区浦滨路"])
+        self.assertTrue(r["radiation"])
+        self.assertEqual(r["bracket_meaning"], "业务类别")
+        self.assertEqual(r["project_districts"], ["江北新区"])
+
+    def test_transformer_project_counts_as_radiation(self):
+        """输变电/千伏是辐射类最常见的写法，标题没写「辐射」也要认出来。"""
+        r = self.cls_("南京市",
+                      "南京市生态环境局关于220千伏送出工程环境影响评价文件受理情况的公示",
+                      "南京市生态环境局", [])
+        self.assertTrue(r["radiation"])
+
+    def test_channel_org_fills_placeless_source(self):
+        """常州页面的「来源：生态环境局」不含地名，只能靠栏目归属机构补全。"""
+        bare = self.cls_("常州市", "关于2026年9月18日建设项目生态环境影响评价文件受理情况的公示",
+                         "生态环境局", ["经开区"])
+        self.assertEqual(bare["approval_district"], "")
+        filled = self.cls_("常州市", "关于2026年9月18日建设项目生态环境影响评价文件受理情况的公示",
+                           "生态环境局", ["经开区"], org="常州市生态环境局")
+        self.assertEqual(filled["approval_district"], "市本级")
+        self.assertEqual(filled["bracket_meaning"], "无")
+
+    def test_approval_and_project_district_differ(self):
+        """常州整栏都是市局审批、项目散在各区县，两者必须分开存。"""
+        r = self.cls_("常州市", "关于2026年9月10日建设项目生态环境影响评价文件受理情况的公示",
+                      "生态环境局", ["溧阳市天目湖镇", "金坛区尧塘街道"], org="常州市生态环境局")
+        self.assertEqual(r["approval_district"], "市本级")
+        self.assertEqual(r["project_districts"], ["溧阳", "金坛"])
