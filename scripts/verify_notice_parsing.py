@@ -259,12 +259,29 @@ def main() -> None:
     ap.add_argument("--projects", default="")
     ap.add_argument("--links-file", default="",
                     help="列表页由 JS 渲染时，用浏览器导出的 URL\\t标题 文件喂进来")
+    ap.add_argument("--entry-url", default="", help="覆盖入口URL：区县门户各有各的入口，"
+                    "但共用所在市的地区树，所以 --city 只选地区上下文，入口单独给")
+    ap.add_argument("--org", default="", help="覆盖栏目归属机构（来源不含地名时用它补全）")
     args = ap.parse_args()
 
-    cfg = CHANNELS[args.city]
+    # CHANNELS 只登记了 13 个市的市局栏目；区县门户和省厅栏目靠 --entry-url + --links-file 传进来
+    cfg = dict(CHANNELS.get(args.city) or
+               {"list": "", "pages": 1, "page_url": lambda b, p: b,
+                "link_re": re.compile(r"受理"), "org": ""})
+    if args.entry_url:
+        cfg["list"] = args.entry_url
+    if args.org:
+        # 飞书「栏目归属机构」列带人工注解（「（含XX局6条）」「（青绿旧名：…）」），
+        # 它会被当成发文机关写进产出，先剥掉。机构名本身的括号（「(太湖办)」
+        # 「(杨舍镇)」）要留，所以只认注解词
+        cfg["org"] = re.sub(r"[（(](?=[^）)]*(?:含|另有|旧名|青绿|\d+\s*条))[^）)]*[）)]\s*$",
+                            "", args.org).strip().strip("【】 ")
     tree = json.loads((ROOT / "refs" / "area_tree_320000.json").read_text(encoding="utf-8"))["地区树"]
     places = Places(tree)
-    city = next(c for c in tree["市"] if c["名称"] == args.city)
+    # 省厅栏目不属于任何一个市，用一个没有区县列表的伪「市」占位，
+    # resolve_notice 见到空区县列表就改走全省唯一命中
+    city = next((c for c in tree["市"] if c["名称"] == args.city),
+                {"编码": tree["编码"], "名称": tree["名称"], "简称": tree["简称"], "区县": []})
 
     with httpx.Client(headers={**HEADERS, "Referer": cfg["list"]}) as client:
         if args.links_file:

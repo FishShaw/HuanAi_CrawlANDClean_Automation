@@ -56,8 +56,12 @@ def main() -> None:
     args = ap.parse_args()
 
     data = list(csv.DictReader(DATA.open(encoding="utf-8-sig")))
+    # 先按入口URL精确分，再按域名兜底：省厅的辐射栏目和非辐射栏目同域不同栏，
+    # 只按域名分会把两行写成一样的值
+    by_entry: dict[str, list[dict]] = collections.defaultdict(list)
     by_host: dict[str, list[dict]] = collections.defaultdict(list)
     for r in data:
+        by_entry[r["入口URL"]].append(r)
         by_host[host(r["公告URL"])].append(r)
 
     head, body = read_sheet()
@@ -67,6 +71,9 @@ def main() -> None:
     def cell(r: list[str], i: int) -> str:
         return r[i].strip() if len(r) > i else ""
 
+    entry_rows = collections.Counter(
+        cell(r, c_url) for r in body if cell(r, c_url))
+
     plan: dict[str, dict[int, str]] = {k: {} for k in COLS}
     city = ""
     skipped_no_data = 0
@@ -75,7 +82,8 @@ def main() -> None:
         scope, entry = cell(r, c_scope), cell(r, c_url)
         if not entry:
             continue
-        pool = [x for x in by_host.get(host(entry), []) if x["城市"] == city]
+        pool = by_entry.get(entry) or [x for x in by_host.get(host(entry), [])
+                                        if x["城市"] == city]
         if not pool:
             skipped_no_data += 1
             continue
@@ -94,6 +102,14 @@ def main() -> None:
                 zone = zone.removeprefix(city.removesuffix("市"))
                 if len(zone) >= 4:
                     rows = [x for x in pool if zone in x["建设地点"]]
+            if not rows and entry_rows[entry] == 1 and \
+                    all(host(x["公告URL"]) == host(entry) for x in pool):
+                # 入口只被这一行用，且抓到的公告都出自这个域名 —— 那它就是这个区县
+                # 自己的门户，整栏都属于这一行。阜宁的公告发文机关写的是盐城市局、
+                # 建设地点在附件里，按区县名一条也切不出来，但它们确实是阜宁的。
+                # 必须限定「只被这一行用」：无锡市局那个入口摊在 9 行上，
+                # 整池灌下去会把全市的数据写到新吴区那一行。
+                rows = pool
             if not rows:
                 skipped_no_data += 1
                 continue

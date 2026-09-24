@@ -48,11 +48,29 @@ def district_of_address(addr: str, city: dict, places) -> str:
     if not addr:
         return ""
     s = re.sub(r"^" + re.escape(places.prov_core) + r"省?", "", addr.strip())
+    if not city.get("区县"):
+        # 省厅栏目不属于任何一个市，项目散在全省：只认全省唯一命中的区县名，
+        # 「鼓楼」这种多市同名的宁可不认（与 clean 的口径一致）
+        hit = places.unique_district(s)
+        return hit[1] if hit else (places.zone_in(s) or "")
     d = places.district_in(s, city)
     if d:
         return d
     z = places.zone_in(s)  # 江北新区这类没有区县码的片区
     return z or ""
+
+
+def _area(places, name: str, city: dict):
+    """省厅栏目没有「查询的市」，而 area_of 要靠它兜底，省编码不在市索引里会直接返回 None。
+    这种情况借任一个市的编码做上下文：发文机关自己写着省名，会走到省级那条分支；
+    万一名称里没有地名，兜底结果会是借来那个市的「市本级」——那是假的，丢掉。"""
+    if city.get("区县"):
+        return places.area_of(name, city["编码"], "")
+    borrowed = places.cities[0]
+    area = places.area_of(name, borrowed["编码"], "")
+    if area and area[0] == borrowed["名称"] and not places.city_in(name):
+        return None     # 名称里没提这个市，这只是借来的兜底，是假的
+    return area
 
 
 def classify(title: str, source: str, locations: list[str], city: dict, places,
@@ -70,10 +88,10 @@ def classify(title: str, source: str, locations: list[str], city: dict, places,
     radiation = is_radiation(title, bracket)
 
     src = normalize(source or "")
-    approval_area = places.area_of(src, city["编码"], "") if src else None
+    approval_area = _area(places, src, city) if src else None
     if not approval_area and channel_org:
         src = normalize(channel_org)
-        approval_area = places.area_of(src, city["编码"], "")
+        approval_area = _area(places, src, city)
     approval_district = approval_area[1] if approval_area else ""
 
     projects = [district_of_address(a, city, places) for a in (locations or [])]
