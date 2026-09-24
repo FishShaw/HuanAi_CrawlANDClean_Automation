@@ -25,12 +25,16 @@ LEVEL_WORDS = {"市级", "市本级", "本级", "市直"}
 DOCTYPE = re.compile(r"^(报告表|报告书|登记表|报告|表|书)$")
 
 
+# 来源后面紧跟的计数/字体等页面元件，中间常常不带空格（太仓「来源：港区管委会访问量：」）
+SOURCE_TAIL = re.compile(r"发布时间|发布日期|访问量|浏览量|点击量|阅读量|字体|分享|&nbsp;")
+
+
 def parse_source(text: str) -> str:
     """从详情页正文里取发文机关。取不到返回空串。"""
     m = SOURCE.search(text or "")
     if not m:
         return ""
-    return re.split(r"发布时间|发布日期|&nbsp;", m.group(1))[0].strip()
+    return SOURCE_TAIL.split(m.group(1))[0].strip()
 
 
 def bracket_of(title: str) -> str:
