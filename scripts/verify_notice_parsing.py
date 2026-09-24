@@ -88,6 +88,37 @@ CHANNELS = {
         "page_url": lambda base, p: base if p == 1 else base.replace("sphjgs.html", f"sphjgs_{p-1}.html"),
         "link_re": re.compile(r"受理公示"), "org": "南通市数据局",
     },
+    "苏州市": {
+        "list": "https://sthjj.suzhou.gov.cn/szhbj/jsslgs/bjgs_list.shtml",
+        "pages": 25,
+        "page_url": lambda base, p: base if p == 1 else base.replace("bjgs_list.shtml", f"bjgs_list_{p}.shtml"),
+        "link_re": re.compile(r"受理"), "org": "苏州市生态环境局",
+    },
+    "无锡市": {
+        "list": "https://bigdata.wuxi.gov.cn/gggs/jsxmhpspgszl/ffsjsxmhpspgs/slgs/index.shtml",
+        "pages": 3,
+        "page_url": lambda base, p: base if p == 1 else base.replace("index.shtml", f"index_{p-1}.shtml"),
+        "link_re": re.compile(r"受理"), "org": "无锡市数据局",
+    },
+    "徐州市": {
+        # https 整站对程序化访问回 403，http 可用；列表是 POST 接口，靠 --links-file 喂进来
+        "list": "http://sthj.xz.gov.cn/dynamic/zwgk/govInfoPub.html?categorynum=003011",
+        "pages": 1, "page_url": lambda base, p: base,
+        "link_re": re.compile(r"受理"), "org": "徐州市生态环境局",
+    },
+    "淮安市": {
+        # 列表是 JS 画的，但 gotopage() 只是跳静态 index_N.html，直接按静态页抓即可。
+        # 注意栏目号：entries 里记的 13403_336214 是空壳，真实栏目是 13256_883485
+        "list": "https://sthjj.huaian.gov.cn/col/13256_883485/index.html",
+        "pages": 29,
+        "page_url": lambda base, p: base if p == 1 else base.replace("index.html", f"index_{p}.html"),
+        "link_re": re.compile(r"受理"), "org": "淮安市生态环境局",
+    },
+    "连云港市": {
+        "list": "http://hbj.lyg.gov.cn/slgs/slgs.html",
+        "pages": 1, "page_url": lambda base, p: base,
+        "link_re": re.compile(r"受理"), "org": "连云港市生态环境局",
+    },
 }
 
 
@@ -133,6 +164,18 @@ def _field_of(cell: str) -> str:
     return ""
 
 
+def title_of(doc) -> str:
+    """列表页由 JS 渲染时拿不到标题，从详情页自己取。"""
+    for xp in ('//meta[@name="ArticleTitle"]/@content', '//h1//text()', '//title/text()'):
+        v = doc.xpath(xp)
+        if v:
+            t = re.sub(r"\s+", " ", str(v[0])).strip()
+            t = re.split(r"\s*[|_]\s*", t)[0].strip()
+            if len(t) > 8:
+                return t
+    return ""
+
+
 def parse_detail(txt: str) -> tuple[str, list[dict]]:
     """返回 (发文机关, [每个项目一个 dict])。
 
@@ -144,6 +187,7 @@ def parse_detail(txt: str) -> tuple[str, list[dict]]:
     doc = LH.fromstring(txt)
     body = re.sub(r"\s+", " ", doc.text_content())
     src = RN.parse_source(body)
+    page_title = title_of(doc)
 
     best: list[dict] = []
     for tb in doc.xpath("//table"):
@@ -172,7 +216,7 @@ def parse_detail(txt: str) -> tuple[str, list[dict]]:
                 best = vals
             break
     if best:
-        return src, best
+        return src, best, page_title
 
     rec = {}
     for tb in doc.xpath("//table"):
@@ -187,7 +231,23 @@ def parse_detail(txt: str) -> tuple[str, list[dict]]:
                     rec[name] = v
         if rec.get("建设地点"):
             break
-    return src, ([rec] if rec.get("建设地点") else [])
+    if rec.get("建设地点"):
+        return src, [rec], page_title
+    return src, _from_body(body), page_title
+
+
+# 南通的公示没有表格，正文直接写「项目名称：…； 建设地点：…； 建设单位：…」，一条公示一个项目
+_INLINE = re.compile(r"(项目名称|建设地点|建设地址|建设单位|环境影响评价机构|环评机构|受理日期)"
+                     r"[：:]\s*([^；;]{1,120}?)\s*(?=[；;]|$|项目名称|建设地点|建设单位|环评机构)")
+
+
+def _from_body(body: str) -> list[dict]:
+    rec = {}
+    for label, val in _INLINE.findall(body):
+        name = _field_of(label)
+        if name and name not in rec and val.strip():
+            rec[name] = val.strip()
+    return [rec] if rec.get("建设地点") else []
 
 
 def main() -> None:
@@ -197,6 +257,8 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--dump", default="")
     ap.add_argument("--projects", default="")
+    ap.add_argument("--links-file", default="",
+                    help="列表页由 JS 渲染时，用浏览器导出的 URL\\t标题 文件喂进来")
     args = ap.parse_args()
 
     cfg = CHANNELS[args.city]
@@ -205,7 +267,17 @@ def main() -> None:
     city = next(c for c in tree["市"] if c["名称"] == args.city)
 
     with httpx.Client(headers={**HEADERS, "Referer": cfg["list"]}) as client:
-        items = list_items(client, cfg)
+        if args.links_file:
+            items = []
+            for line in Path(args.links_file).read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                u, _, t = line.partition("\t")
+                items.append((u.strip(), t.strip()))
+            print(f"从 {args.links_file} 读入 {len(items)} 条链接")
+        else:
+            items = list_items(client, cfg)
         if args.limit:
             items = items[: args.limit]
         print(f"{args.city} 栏目取到 {len(items)} 条公示")
@@ -213,10 +285,10 @@ def main() -> None:
         def work(it):
             url, title = it
             try:
-                src, recs = parse_detail(fetch(client, url))
+                src, recs, ptitle = parse_detail(fetch(client, url))
             except Exception as e:
                 return {"url": url, "title": title, "err": type(e).__name__, "src": "", "recs": []}
-            return {"url": url, "title": title, "src": src, "recs": recs,
+            return {"url": url, "title": title or ptitle, "src": src, "recs": recs,
                     "locs": [r.get("建设地点", "") for r in recs]}
 
         with ThreadPoolExecutor(max_workers=8) as ex:
