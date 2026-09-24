@@ -21,6 +21,8 @@ BRACKET = re.compile(r"[（(]([^（）()]{1,12})[）)]\s*$")
 SOURCE = re.compile(r"(?:文章来源|来源)[：:]\s*([^\s　<]+)")
 # 表示「市本级」的括号写法，不是地名
 LEVEL_WORDS = {"市级", "市本级", "本级", "市直"}
+# 括号里是环评文件类型（镇江标题结尾常带「（报告表）」），也不是地名
+DOCTYPE = re.compile(r"^(报告表|报告书|登记表|报告|表|书)$")
 
 
 def parse_source(text: str) -> str:
@@ -81,6 +83,8 @@ def classify(title: str, source: str, locations: list[str], city: dict, places,
         meaning = "业务类别"
     elif core(bracket) in LEVEL_WORDS or bracket in LEVEL_WORDS:
         meaning = "层级"
+    elif DOCTYPE.match(bracket):
+        meaning = "文件类型"
     elif not bracket:
         meaning = "无"
     else:

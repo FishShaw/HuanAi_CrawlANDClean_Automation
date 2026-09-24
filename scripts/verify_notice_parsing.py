@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import csv
 import json
 import re
 import sys
@@ -44,10 +45,48 @@ CHANNELS = {
     },
     "常州市": {
         "list": "https://sthjj.changzhou.gov.cn/class/ALFJELKI",
-        "pages": 1,
-        "page_url": lambda base, p: base,
+        "pages": 30,
+        "page_url": lambda base, p: base if p == 1 else f"{base}/{p}",
         "link_re": re.compile(r"受理情况的公示"),
         "org": "常州市生态环境局",
+    },
+    "镇江市": {
+        "list": "https://sthj.zhenjiang.gov.cn/sthj/slqkgs/xxgk_list.shtml",
+        "pages": 15,
+        "page_url": lambda base, p: base if p == 1 else base.replace("xxgk_list.shtml", f"xxgk_list_{p-1}.shtml"),
+        "link_re": re.compile(r"受理"),
+        "org": "镇江市生态环境局",
+    },
+    "泰州市": {
+        "list": "https://hbj.taizhou.gov.cn/ztzl/jsxm/xmslgs/index.html",
+        "pages": 15,
+        "page_url": lambda base, p: base if p == 1 else base.replace("index.html", f"index_{p-1}.html"),
+        "link_re": re.compile(r"受理"),
+        "org": "泰州市生态环境局",
+    },
+    "扬州市": {
+        "list": "https://sthj.yangzhou.gov.cn/zfxxgk/fdzdgk/ywgz/hpsp/",
+        "pages": 15,
+        "page_url": lambda base, p: base if p == 1 else f"{base}index_{p-1}.html",
+        "link_re": re.compile(r"受理"),
+        "org": "扬州市生态环境局",
+    },
+    "盐城市": {
+        "list": "https://jsychb.yancheng.gov.cn/col/col17849/index.html",
+        "pages": 1, "page_url": lambda base, p: base,
+        "link_re": re.compile(r"受理"), "org": "盐城市生态环境局",
+    },
+    "宿迁市": {
+        "list": "https://sthj.suqian.gov.cn/shbj/jsxm/xxgk_list.shtml",
+        "pages": 12,
+        "page_url": lambda base, p: base if p == 1 else base.replace("xxgk_list.shtml", f"xxgk_list_{p-1}.shtml"),
+        "link_re": re.compile(r"受理情况的公示"), "org": "宿迁市生态环境局",
+    },
+    "南通市": {
+        "list": "https://shuju.nantong.gov.cn/ntsxzspj/sphjgs/sphjgs.html",
+        "pages": 12,
+        "page_url": lambda base, p: base if p == 1 else base.replace("sphjgs.html", f"sphjgs_{p-1}.html"),
+        "link_re": re.compile(r"受理公示"), "org": "南通市数据局",
     },
 }
 
@@ -73,42 +112,82 @@ def list_items(client: httpx.Client, cfg: dict) -> list[tuple[str, str]]:
             title = (a.get("title") or a.text_content() or "").strip()
             title = re.sub(r"\s+", " ", title)
             href = a.get("href")
-            if len(title) > 12 and cfg["link_re"].search(title) and re.search(r"\.(html|shtml)$", href):
+            if len(title) > 12 and cfg["link_re"].search(title) and re.search(r"(\.(html|shtml)(\?|$)|/content/[0-9a-f-]{8,})", href) and "javascript" not in href:
                 out.setdefault(href, title)
     return list(out.items())
 
 
-def parse_detail(txt: str) -> tuple[str, list[str]]:
+FIELD_ALIASES = {
+    "项目名称": ("项目名称", "建设项目名称"),
+    "建设地点": ("建设地点", "建设地址", "项目地点"),
+    "建设单位": ("建设单位", "申请单位", "建设单位名称"),
+    "环评机构": ("环境影响评价机构", "环评机构", "评价机构", "环境影响评价单位"),
+    "受理日期": ("受理日期", "受理时间"),
+}
+
+
+def _field_of(cell: str) -> str:
+    for name, aliases in FIELD_ALIASES.items():
+        if cell in aliases:
+            return name
+    return ""
+
+
+def parse_detail(txt: str) -> tuple[str, list[dict]]:
+    """返回 (发文机关, [每个项目一个 dict])。
+
+    两种表格形态都要认：横向表头（南京、常州：一行一个项目）和纵向键值表
+    （镇江：左列是「建设地点」这类标签，一页一个项目）。页面还常用嵌套表格做版面，
+    所以横向表要求「表头单元格正好等于字段名且列数>=4」并跳过含子表的外层表，
+    否则会把「[打印] [关闭]」当成建设地点取出来。
+    """
     doc = LH.fromstring(txt)
     body = re.sub(r"\s+", " ", doc.text_content())
     src = RN.parse_source(body)
-    # 页面常用嵌套表格做版面（常州就是），只认「表头单元格正好是建设地点、且列数≥4」的那张，
-    # 否则会把「[打印] [关闭]」这种布局格当成建设地点取出来。取最内层、数据行最多的一张。
-    best: tuple[int, list[str]] = (0, [])
+
+    best: list[dict] = []
     for tb in doc.xpath("//table"):
         if tb.xpath(".//table"):
-            continue  # 外层布局表跳过
+            continue
         rows = tb.xpath(".//tr")
         if len(rows) < 2:
             continue
-        for hi in range(min(3, len(rows))):  # 表头可能不在第一行
+        for hi in range(min(3, len(rows))):
             head = [re.sub(r"\s+", "", c.text_content()) for c in rows[hi].xpath("./td|./th")]
             if len(head) < 4:
                 continue
-            ci = next((i for i, c in enumerate(head) if c == "建设地点"), -1)
-            if ci < 0:
+            cmap = {_field_of(c): i for i, c in enumerate(head) if _field_of(c)}
+            if "建设地点" not in cmap:
                 continue
             vals = []
             for tr in rows[hi + 1:]:
                 cells = tr.xpath("./td|./th")
-                if len(cells) > ci:
-                    v = re.sub(r"\s+", " ", cells[ci].text_content()).strip()
-                    if v and "建设地点" not in v:
-                        vals.append(v)
-            if len(vals) > best[0]:
-                best = (len(vals), vals)
+                rec = {}
+                for name, ci in cmap.items():
+                    if len(cells) > ci:
+                        rec[name] = re.sub(r"\s+", " ", cells[ci].text_content()).strip()
+                if rec.get("建设地点") and "建设地点" not in rec["建设地点"]:
+                    vals.append(rec)
+            if len(vals) > len(best):
+                best = vals
             break
-    return src, best[1]
+    if best:
+        return src, best
+
+    rec = {}
+    for tb in doc.xpath("//table"):
+        for tr in tb.xpath(".//tr"):
+            cells = tr.xpath("./td|./th")
+            if len(cells) < 2:
+                continue
+            name = _field_of(re.sub(r"\s+", "", cells[0].text_content()))
+            if name and name not in rec:
+                v = re.sub(r"\s+", " ", cells[1].text_content()).strip()
+                if v:
+                    rec[name] = v
+        if rec.get("建设地点"):
+            break
+    return src, ([rec] if rec.get("建设地点") else [])
 
 
 def main() -> None:
@@ -117,6 +196,7 @@ def main() -> None:
     ap.add_argument("--city", default="南京市")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--dump", default="")
+    ap.add_argument("--projects", default="")
     args = ap.parse_args()
 
     cfg = CHANNELS[args.city]
@@ -133,10 +213,11 @@ def main() -> None:
         def work(it):
             url, title = it
             try:
-                src, locs = parse_detail(fetch(client, url))
+                src, recs = parse_detail(fetch(client, url))
             except Exception as e:
-                return {"url": url, "title": title, "err": type(e).__name__, "src": "", "locs": []}
-            return {"url": url, "title": title, "src": src, "locs": locs}
+                return {"url": url, "title": title, "err": type(e).__name__, "src": "", "recs": []}
+            return {"url": url, "title": title, "src": src, "recs": recs,
+                    "locs": [r.get("建设地点", "") for r in recs]}
 
         with ThreadPoolExecutor(max_workers=8) as ex:
             got = list(ex.map(work, items))
@@ -173,6 +254,34 @@ def main() -> None:
                 diff += 1
     print(f"\n审批地与项目地：相同 {same}，不同 {diff}"
           f"（不同占 {diff / max(same + diff, 1) * 100:.1f}%）")
+
+    if args.projects:
+        cols = ["城市","入口URL","公告URL","标题","发布日期","发文机关","审批地区",
+                "项目名称","建设地点","项目地区","建设单位","环评机构","是否辐射","括号语义"]
+        out = []
+        for r in res:
+            n = max(len(r["project_districts"]), 1)
+            for i in range(n):
+                out.append({
+                    "城市": args.city, "入口URL": cfg["list"], "公告URL": r["url"], "标题": r["title"],
+                    "发布日期": (re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", r["title"]) or [""])[0],
+                    "发文机关": r["approval_org"], "审批地区": r["approval_district"],
+                    "项目名称": (r["recs"][i].get("项目名称", "") if i < len(r["recs"]) else ""),
+                    "建设地点": (r["locs"][i] if i < len(r["locs"]) else ""),
+                    "项目地区": (r["project_districts"][i] if i < len(r["project_districts"]) else ""),
+                    "建设单位": (r["recs"][i].get("建设单位", "") if i < len(r["recs"]) else ""),
+                    "环评机构": (r["recs"][i].get("环评机构", "") if i < len(r["recs"]) else ""),
+                    "是否辐射": "是" if r["radiation"] else "否",
+                    "括号语义": r["bracket_meaning"],
+                })
+        pth = Path(args.projects)
+        new = not pth.exists()
+        with open(pth, "a", newline="", encoding="utf-8-sig") as fh:
+            w = csv.DictWriter(fh, fieldnames=cols)
+            if new:
+                w.writeheader()
+            w.writerows(out)
+        print(f"项目级明细追加 {len(out)} 行 → {pth}")
 
     if args.dump:
         Path(args.dump).write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
