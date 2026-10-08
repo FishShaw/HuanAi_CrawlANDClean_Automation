@@ -23,6 +23,7 @@ from pathlib import Path
 
 from build_entries_xlsx import load_entries
 from clean_jiangsu_eia import SPLIT, Places, normalize
+from clean_jiangsu_eia import core as place_core
 
 HERE = Path(__file__).resolve().parent
 REFS = HERE / "refs"
@@ -259,6 +260,11 @@ def main() -> None:
     for (cname, short), q in list(dist.items()):
         core = re.sub(r"(市|区|县)$", "", short)
         dist.setdefault((cname, core), q)
+    # 清洗输出的地区是 core(全称)：「景宁畲族自治县」→「景宁畲族」，和简称「景宁」对不上，
+    # 不登记就被当成开发区（浙江丽水 10 条）
+    for m in tree["市"]:
+        for q in m.get("区县", []):
+            dist.setdefault((m["名称"], place_core(q["名称"])), q)
 
     places = Places(tree)
     zones = load_zones(args.province)

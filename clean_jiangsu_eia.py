@@ -124,11 +124,22 @@ class Places:
         self.city_words.discard("")
 
     def city_in(self, name: str) -> dict | None:
-        """名称里写明的本省城市。"""
+        """名称里写明的本省城市。
+
+        出现多个市名时取最靠前的：「宁波杭州湾新区环境保护局」是宁波的，原先按城市表顺序
+        先碰到杭州就返回了。市名后面紧跟「湾」的是海湾不是城市——杭州湾横跨宁波、嘉兴、绍兴，
+        「杭州湾上虞经济技术开发区」在绍兴上虞，跳过杭州后由区县名「上虞」定位。
+        （浙江实测 234 条因此挂错到杭州。）
+        """
+        best = None
         for city in self.cities:
-            if core(city["名称"]) and core(city["名称"]) in name:
-                return city
-        return None
+            c = core(city["名称"])
+            if not c:
+                continue
+            m = re.search(re.escape(c) + "(?!湾)", name)
+            if m and (best is None or m.start() < best[0]):
+                best = (m.start(), city)
+        return best[1] if best else None
 
     def strip_city_prefix(self, name: str, city: dict) -> str:
         """去掉名称开头的市名，如「淮安市生态环境局」→「生态环境局」。
@@ -211,6 +222,13 @@ class Places:
         city = named_city or self.by_code.get(queried_city_code)
         if not city:
             return None
+        # 名称没写市、却写了别的市独有的区县名时，先切到那个市再认开发区：
+        # 「杭州湾上虞经济技术开发区生态环境分局」被站点标在杭州名下，上虞是绍兴的。
+        # 原先开发区先于区县判，「上虞」根本没机会起作用
+        if not named_city:
+            other = self.unique_district(name)
+            if other and other[0] != city["名称"]:
+                city = next(c for c in self.cities if c["名称"] == other[0])
         zone = self.zone_in(name, district)
         if zone:
             return (city["名称"], zone)
