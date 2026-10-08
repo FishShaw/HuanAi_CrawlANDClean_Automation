@@ -102,6 +102,14 @@ class Places:
     def __init__(self, tree: dict):
         self.code = tree["编码"]
         self.extra_zones = EXTRA_ZONES.get(self.code, ())
+        # 开头不带省市名、规则认不出的外省单位，经需求方确认后按省登记在 refs/misplaced_<省>.csv
+        # （浙江的「常州高新区（新北区）数据局」「广州开发区环境保护局」）。按写法精确匹配，不做包含：
+        # 裸写法「行政审批局」若登记进去，全省所有这么写的记录都会被误删
+        f = Path(__file__).resolve().parent / "refs" / f"misplaced_{self.code}.csv"
+        self.misplaced = set()
+        if f.exists():
+            with open(f, encoding="utf-8-sig") as fh:
+                self.misplaced = {normalize(r["写法"]) for r in csv.DictReader(fh) if r.get("写法")}
         self.prov = tree["名称"]
         self.prov_core = core(self.prov)
         self.cities = tree["市"]
@@ -206,6 +214,8 @@ class Places:
 
     def is_misplaced(self, name: str) -> bool:
         """标错地区：开头的省市不属于本省。"""
+        if name in self.misplaced:
+            return True
         m = PLACE_PREFIX.match(STATION.sub("", name))
         return bool(m) and core(m.group(1)) not in self.allowed
 
