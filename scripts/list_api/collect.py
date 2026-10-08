@@ -103,6 +103,10 @@ def sniff(url: str) -> tuple[str, dict]:
         if {"webId", "pageId", "tplSetId"} <= need.keys():
             need.update(parseType="bulidstatic", pageType="column")
             cfg["q"] = need
+            # 一页上常有好几个区块，列表不一定在第一个（奉化「政府信息公开_法定主动公开目录」是空的，
+            # 列表在「列表_信息公开目录」）；写法也不统一，tagId / tagid、单双引号都有
+            cfg["tags"] = list(dict.fromkeys(
+                re.findall(r"tag[Ii]d[\"']?\s*[:=]\s*[\"']([^\"']+)", t))) or [need.get("tagId", "")]
             cfg["api"] = origin + "/api-gateway/jpaas-publish-server/front/page/build/unit"
             return "jpaas", cfg
     if "govInfoPub" in url or "EWB-FRONT" in t:
@@ -172,8 +176,25 @@ def pull_truecms(cfg, maxp):
     return rows
 
 
+def _jpaas_page(cfg, tag, pg):
+    q = dict(cfg["q"], tagId=tag, paramJson=json.dumps({"pageNo": pg, "pageSize": "15"}))
+    d = get(cfg["api"], cfg["url"], params=q).json()
+    markup = (d.get("data") or {}).get("html") or (d.get("data") if isinstance(d.get("data"), str) else "")
+    return links_in(markup or "", cfg["origin"])
+
+
 def pull_jpaas(cfg, maxp):
-    """翻页参数必须包进 paramJson，裸 pageNo / page / currentPage 全部无效。"""
+    """翻页参数必须包进 paramJson，裸 pageNo / page / currentPage 全部无效。
+
+    先用第一个区块；它取不到东西时才换别的区块（奉化的列表在第二个区块）。
+    不直接挑链接最多的：有的页面后面挂着全站「主动公开列表」，链接最多但不是本栏目的。"""
+    tags = cfg.get("tags") or [cfg["q"].get("tagId", "")]
+    first = cfg["q"].get("tagId") or tags[0]
+    if not _jpaas_page(cfg, first, 1):
+        for tg in tags:
+            if tg != first and _jpaas_page(cfg, tg, 1):
+                cfg = dict(cfg, q=dict(cfg["q"], tagId=tg))
+                break
     seen, rows = set(), []
     for pg in range(1, maxp + 1):
         q = dict(cfg["q"], paramJson=json.dumps({"pageNo": pg, "pageSize": "15"}))
