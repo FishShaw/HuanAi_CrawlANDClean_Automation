@@ -287,7 +287,11 @@ def main() -> None:
                 alias.setdefault((u["城市"], v), key)
 
     agg = aggregate_raw(raw_dir, args.province, alias)
-    url2id = build_entry_registry(entries, args.province, set(city_code) | {"—"})
+    # 「—」（省级/国家）的入口在 000000_省级及国家.csv 里多省共用：只收本省单位清单里有的，
+    # 否则江苏的入口表会混进安徽省厅、浙江省厅（2026-10-08 发现 3200-E055 就是安徽省厅）
+    own_national = {u["单位"] for u in units if u["城市"] == "—"}
+    entries_here = {k: v for k, v in entries.items() if k[0] != "—" or k[1] in own_national}
+    url2id = build_entry_registry(entries_here, args.province, set(city_code) | {"—"})
     merges = write_org_merge_candidates(units, args.province)
 
     prev: dict[str, dict] = {}
