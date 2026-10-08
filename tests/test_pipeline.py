@@ -281,3 +281,47 @@ class NoticeResolveTest(unittest.TestCase):
                       "生态环境局", ["溧阳市天目湖镇", "金坛区尧塘街道"], org="常州市生态环境局")
         self.assertEqual(r["approval_district"], "市本级")
         self.assertEqual(r["project_districts"], ["溧阳", "金坛"])
+
+
+class ReportAttachmentTest(unittest.TestCase):
+    """report_stage_probe.is_report：公示附件是不是环评报告正文。
+
+    用例全部取自 2026-10-08 浙江、安徽实际抓到的附件名。这条规则决定
+    「某省是不是只有受理阶段拿得到全本」的结论，误收批文会把审批决定阶段虚报成有报告。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from report_stage_probe import is_report
+        cls.is_report = staticmethod(is_report)
+
+    def test_decision_documents_are_not_reports(self):
+        """审查意见、批文文号、「…的函」文件名里都带报告书全名，只看「报告书」会全部误收。"""
+        for name in ("湖环建〔2026〕36号-关于浙江新盈电子材料有限公司年产730吨光刻胶原料项目环境影响报告书的审查意见.pdf",
+                     "关于温州振先环保科技有限公司污水处理中心资源化利用技改项目环境影响报告表审批意见的函.pdf",
+                     "台环建（新）〔2026〕25号关于台州市椒江海门橡胶三厂建设项目生态环境影响报告表的许可决定书.pdf",
+                     "杭环钱评批〔2026〕58号-浙江明日特灵新材料有限公司年产3万吨新材料共混改性项目.docx"):
+            self.assertFalse(self.is_report(name, 0), name)
+
+    def test_side_materials_are_not_reports(self):
+        for name in ("建设项目概况、主要环境影响及预防或减轻不良影响的对策或措施.docx",
+                     "环境影响评价公众参与说明.pdf"):
+            self.assertFalse(self.is_report(name, 0), name)
+
+    def test_report_naming_variants(self):
+        """各市对全本的叫法：公示稿、环评报告、环评文本、项目名直接当文件名，公参说明和报告打包。"""
+        for name in ("吴兴区埭溪镇共富羊场建设项目报告书公示稿及公众参与说明.zip",
+                     "环评报告-金华市乙顺再生资源回收有限公司-公示稿.pdf",
+                     "【环评文本】安徽氟瑞星化工有限公司年产5万吨化学纯氢氟酸扩产项目.docx",
+                     "马鞍山中粮生物化学有限公司5000吨／年β-环糊精项目.pdf",
+                     "公示-浙江明日特灵新材料有限公司年产3万吨新材料共混改性项目生态环境影响报告表.pdf",
+                     "（公示文本）浙江奋斗实业有限公司.pdf"):
+            self.assertTrue(self.is_report(name, 0), name)
+
+    def test_unnamed_attachment_needs_page_count(self):
+        """宁波附件只叫「附件1」：审批决定的是 8 页扫描批文（1.6MB），受理的是 456 页报告书。
+        只凭大小会把批文判成报告，所以大文件还要数页。"""
+        self.assertFalse(self.is_report("附件1", 1_600_000, lambda: 8))
+        self.assertTrue(self.is_report("附件1", 35_400_000, lambda: 456))
+        self.assertFalse(self.is_report("附件1", 900_000, lambda: 456))   # 太小的根本不去数

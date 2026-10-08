@@ -58,6 +58,14 @@ def links_in(markup: str, origin: str) -> list[tuple[str, str]]:
 
 def sniff(url: str) -> tuple[str, dict]:
     r = get(url)
+    # 浙江的大汉站点常把旧栏目做成一页 JS 跳转（湖州「非辐环评审批」col1229208549 →
+    # col1229208550），HTTP 层不跳，得自己跟。只跟短页里的跳转，正常列表页不会这么写
+    for _ in range(3):
+        jump = re.search(r"location\.href\s*=\s*[\"']([^\"']+)[\"']", r.text)
+        if not jump or len(r.text) > 4000:
+            break
+        url = urllib.parse.urljoin(str(r.url), jump.group(1))
+        r = get(url)
     t, origin = r.text, "https://" + urllib.parse.urlparse(str(r.url)).netloc
     if urllib.parse.urlparse(str(r.url)).scheme == "http":
         origin = "http://" + urllib.parse.urlparse(str(r.url)).netloc
