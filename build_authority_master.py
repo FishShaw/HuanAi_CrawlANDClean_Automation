@@ -51,6 +51,9 @@ COLUMNS = [
 ]
 
 
+UID_PREFIX = {"320000": "JS", "330000": "ZJ", "340000": "AH"}
+
+
 def load_tree(province: str) -> dict:
     f = REFS / f"area_tree_{province}.json"
     if not f.exists():
@@ -288,7 +291,9 @@ def main() -> None:
             prev = {r["unit_uid"]: r for r in csv.DictReader(fh)}
     by_match = {r.get("function_key", "") + "|" + r.get("name_from_source", ""): r
                 for r in prev.values()}
-    next_seq = max((int(k[2:]) for k in prev if k[2:].isdigit()), default=0) + 1
+    # 编号前缀按省：浙江要是也从 JS0001 起，和江苏的编号一模一样，进了库就分不清
+    pfx = UID_PREFIX.get(args.province, args.province[:2])
+    next_seq = max((int(k[len(pfx):]) for k in prev if k[len(pfx):].isdigit()), default=0) + 1
 
     rows = []
     for u in units:
@@ -323,7 +328,7 @@ def main() -> None:
         fkey = f"{city}|{area}|{places.function_of(name)}"
         ent = entries.get((city, name), {})
         mk = fkey + "|" + name
-        uid = by_match.get(mk, {}).get("unit_uid") or f"JS{next_seq:04d}"
+        uid = by_match.get(mk, {}).get("unit_uid") or f"{pfx}{next_seq:04d}"
         if mk not in by_match:
             next_seq += 1
         keep = prev.get(uid, {})
@@ -414,9 +419,17 @@ def main() -> None:
     if args.approvers:
         rows = [r for r in rows if r["role"] != "其他部门"]
 
+    # 后续步骤加的列（reconcile_master 的 crawl_note、add_portal_publisher 的 portal_publisher）
+    # 不归本脚本生成，重跑时按 unit_uid 原样带过来——否则重跑一次就把它们冲掉
+    extra = [c for c in dict.fromkeys(c for old in prev.values() for c in old) if c not in COLUMNS]
+    for r in rows:
+        old = prev.get(r["unit_uid"], {})
+        for c in extra:
+            r.setdefault(c, old.get(c, ""))
+
     rows.sort(key=lambda r: (r["city_code"], r["admin_code"] or "zzz", -int(r["record_count"] or 0)))
     with open(out_path, "w", newline="", encoding="utf-8-sig") as fh:
-        w = csv.DictWriter(fh, fieldnames=COLUMNS, extrasaction="ignore")
+        w = csv.DictWriter(fh, fieldnames=COLUMNS + extra, extrasaction="ignore")
         w.writeheader()
         w.writerows(rows)
 

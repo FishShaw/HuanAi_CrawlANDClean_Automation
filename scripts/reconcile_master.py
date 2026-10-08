@@ -59,14 +59,87 @@ def norm(u: str) -> str:
     return u.rstrip("/").replace("https://", "").replace("http://", "").replace("www.", "")
 
 
+def decide(url: str, crawled: collections.Counter) -> dict:
+    """一个入口 URL 的校对结论。主数据、入口表、entries/ 三处用同一个结论。"""
+    remap = next((v for k, v in REMAP.items() if k in norm(url)), None)
+    if remap:
+        new_url, cat, why = remap
+        return {"url": new_url or url, "category": cat, "note": why, "date": TODAY}
+    host = norm(url).split("/")[0]
+    if host in BLOCKED:
+        status, why = BLOCKED[host]
+        return {"status": status, "note": why, "date": TODAY}
+    n = crawled.get(norm(url), 0)
+    if n:
+        return {"status": "已核实", "note": f"2026-09-24 实爬：该入口抓到 {n} 条受理公告明细",
+                "date_if_changed": TODAY}
+    return {}
+
+
+def patch_sources(crawled: collections.Counter, run: bool) -> None:
+    """把校对结论写回入口的源头。
+
+    主数据的入口列是 build_authority_master 从 refs/entries_<省>.csv（逐入口，人工值优先）
+    和 entries/<市>.csv（逐单位）派生的。只改主数据的话，下次重跑主数据就把校对冲掉了
+    （2026-10-08 换省时发现：江苏重跑后 54 处校对全部回退）。
+    """
+    reg_f = ROOT / "refs" / "entries_320000.csv"
+    reg = list(csv.DictReader(reg_f.open(encoding="utf-8-sig")))
+    n_reg = 0
+    for e in reg:
+        d = decide(e["entry_url"], crawled)
+        if "url" in d and d["url"] != e["entry_url"]:
+            e["entry_url"] = d["url"]
+            e["domain"] = d["url"].split("//")[-1].split("/")[0]
+            n_reg += 1
+        if d.get("category") and e["entry_category"] != d["category"]:
+            e["entry_category"] = d["category"]
+            n_reg += 1
+        if d.get("status") and e["verify_status"] != d["status"]:
+            e["verify_status"] = d["status"]
+            e["verify_date"] = d.get("date") or d.get("date_if_changed") or e["verify_date"]
+            n_reg += 1
+        elif d.get("date"):
+            e["verify_date"] = d["date"]
+    n_ent = 0
+    ent_files = {}
+    for f in sorted((ROOT / "entries").glob("32*.csv")):
+        rows = list(csv.DictReader(f.open(encoding="utf-8-sig")))
+        for r in rows:
+            url = (r.get("受理公示入口") or "").strip()
+            d = decide(url, crawled) if url else {}
+            if "url" in d and d["url"] != url:
+                r["受理公示入口"] = d["url"]
+                r["核验日期"] = d["date"]
+                n_ent += 1
+        ent_files[f] = rows
+    print(f"写回源头：入口表 {reg_f.name} 改 {n_reg} 处，entries/ 改入口地址 {n_ent} 处")
+    if not run:
+        return
+    with reg_f.open("w", newline="", encoding="utf-8-sig") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(reg[0]))
+        w.writeheader()
+        w.writerows(reg)
+    for f, rows in ent_files.items():
+        with f.open("w", newline="", encoding="utf-8-sig") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+            w.writeheader()
+            w.writerows(rows)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", action="store_true")
+    ap.add_argument("--sources-only", action="store_true",
+                    help="只把校对写回 refs/entries 和 entries/，不碰主数据（主数据已校对过时用）")
     args = ap.parse_args()
 
     data = list(csv.DictReader(DATA.open(encoding="utf-8-sig")))
     crawled = collections.Counter(norm(r["入口URL"]) for r in data)
+    patch_sources(crawled, args.run)
+    if args.sources_only:
+        return
 
     rows = list(csv.DictReader(MASTER.open(encoding="utf-8-sig")))
     hdr = list(rows[0])
