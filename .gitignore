@@ -10,3 +10,13 @@ __pycache__/
 raw/
 by_city/
 trees/
+
+# AI 协作工具的本地规则与配置（只给本机的 AI 会话用，不入库）
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+.claude/
+.codex/
+.cursor/
+.opencode/
+.workbuddy/
