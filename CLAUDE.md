@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 这个分支是什么
 
 从青绿数据（i-esg.com）抓环评受理列表的「受理单位」列，清洗成各省的环评审批机构清单，再填飞书比对表、查官网入口。
-江苏已完整跑通，**换省照 `docs/新省份操作手册.md` 走，代码不用改**。抓取和清洗永远是两个脚本。
+江苏、安徽、浙江已跑通，**换省照 `docs/新省份操作手册.md` 走，代码不用改**。抓取和清洗永远是两个脚本。
 
 ```
 crawl_jiangsu_eia.py --tree-only → trees/<省>.json → gen_city_scripts.py → cities/crawl_*.py, cities/clean_*.py
@@ -13,7 +13,7 @@ cities/crawl_<市>.py → raw/<市>.json → cities/clean_<市>.py → by_city/<
 raw/<省前两位>*.json → merge_jiangsu.py --province → <省>环评单位.csv（完整，带职能列）
                                                    + <省>环评审批机构.csv（交付口径）
 <省>环评审批机构.csv → fill_compare_sheet.py → 飞书比对子表（一单位一行）
-entries/<市>.csv → build_entries_xlsx.py → <省>环评单位_官网及公示入口.xlsx（目前写死江苏）
+entries/<市>.csv → build_entries_xlsx.py --province → <省>环评单位_官网及公示入口.xlsx
 <省>环评单位.csv + refs/* + entries/ → build_authority_master.py → <省>受理单位主数据.csv（+飞书子表）
 ```
 
@@ -33,6 +33,7 @@ entries/<市>.csv → build_entries_xlsx.py → <省>环评单位_官网及公�
 | `docs/新省份操作手册.md` | 换省八步、检查点、与需求方确认过的口径、还没通用的地方 |
 | `docs/江苏试点记录.md` | 江苏各市数据量、飞书比对结果、入口核实结果、与 main 工作流的口径差异 |
 | `docs/安徽记录.md` | 安徽结果、安徽特有写法与对应规则、暴露出的原有缺陷 |
+| `docs/浙江记录.md` | 浙江各市栏目、受理阶段才有全本的验证、县区入口怎么找（搜索引擎 `site:`、市局名义发在县区门户） |
 | `docs/江苏试点记录.md` 末节 | 受理单位主数据表：为什么「地区」列不能当标识符、归属关系的三条证据、南京/苏州标题括号的语义差异 |
 
 ## 命令
