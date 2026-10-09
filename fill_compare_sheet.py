@@ -31,7 +31,10 @@ HERE = Path(__file__).resolve().parent
 ENTRY_COLS = ["首页入口", "受理公示入口", "审批前公示入口", "审批后意见入口"]
 
 # 用户确认过的「开发区 → 所在区县」映射，按省编码分。键是清洗结果里的 (城市, 地区)。
-ZONE_DISTRICT = {
+#
+# 权威来源已迁到 refs/zones_<省>.csv（confirmed=是 的行），这里的字面量留作回归基线：
+# tests/test_pipeline.py 断言两者逐条相等，所以改维表而漏改这里会红灯，不会静默失效。
+_ZONE_DISTRICT_LEGACY = {
     "320000": {
         ("苏州市", "本级高新区"): "虎丘", ("苏州市", "常熟高新区"): "常熟", ("苏州市", "常熟开发区"): "常熟",
         ("苏州市", "相城开发区"): "相城", ("苏州市", "太仓港区"): "太仓", ("苏州市", "太仓港开发区"): "太仓",
@@ -39,6 +42,23 @@ ZONE_DISTRICT = {
         ("常州市", "本级新区"): "新北", ("泰州市", "医药高新区"): "高港", ("泰州市", "高港港区"): "高港",
     },
 }
+
+
+def load_zone_district(province: str) -> dict[tuple[str, str], str]:
+    """从 refs/zones_<省>.csv 读「开发区 → 所在区县」，只认 confirmed=是 的行。
+
+    没有维表文件时回退到字面量，保证换省或只克隆代码时照常能跑。
+    """
+    f = HERE / "refs" / f"zones_{province}.csv"
+    if not f.exists():
+        return dict(_ZONE_DISTRICT_LEGACY.get(province, {}))
+    with open(f, encoding="utf-8-sig") as fh:
+        return {(r["city"], r["source_label"]): r["district_short"]
+                for r in csv.DictReader(fh)
+                if r.get("confirmed") == "是" and r.get("district_short")}
+
+
+ZONE_DISTRICT = {p: load_zone_district(p) for p in _ZONE_DISTRICT_LEGACY}
 
 
 def core(place: str) -> str:
@@ -67,12 +87,19 @@ class Sheet:
 
 
 def load_tree(province: str, raw_dir: Path | None = None) -> dict:
+    """运行时抓来的树优先，refs/ 快照兜底。
+
+    refs/ 是入库的参照快照（trees/ 和 raw/ 都在 .gitignore 里，是运行时产物）。
+    顺序保持 raw → trees → refs，所以有原始记录时行为与以前完全一致。
+    """
     raw_dir = raw_dir or HERE / "raw"
-    for f in [*sorted(raw_dir.glob(f"{province[:2]}*.json")), *sorted((HERE / "trees").glob(f"{province}_*.json"))]:
+    for f in [*sorted(raw_dir.glob(f"{province[:2]}*.json")),
+              *sorted((HERE / "trees").glob(f"{province}_*.json")),
+              *sorted((HERE / "refs").glob(f"area_tree_{province}.json"))]:
         tree = json.loads(f.read_text(encoding="utf-8"))["地区树"]
         if tree["编码"] == province:
             return tree
-    raise SystemExit(f"raw/ 和 trees/ 里都没有省编码 {province} 的地区树")
+    raise SystemExit(f"raw/、trees/、refs/ 里都没有省编码 {province} 的地区树")
 
 
 def load_entries() -> dict[tuple[str, str], dict]:

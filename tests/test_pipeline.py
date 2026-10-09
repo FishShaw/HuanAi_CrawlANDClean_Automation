@@ -165,3 +165,163 @@ class CompareSheetPlanTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MasterDataTest(unittest.TestCase):
+    """主数据表的参照文件：入库快照与维表，无 raw/ 也要能跑。"""
+
+    def test_zone_district_derived_matches_legacy(self):
+        """ZONE_DISTRICT 改成从 refs/zones_*.csv 派生，必须与原字面量逐条相等。"""
+        for prov, legacy in fcs._ZONE_DISTRICT_LEGACY.items():
+            self.assertEqual(fcs.load_zone_district(prov), legacy, prov)
+
+    def test_zone_district_keys_still_produced(self):
+        """ZONE_DISTRICT 的键是清洗产物的键。
+
+        改了 zone_in() 之后某个键不再产生时，那些单位只会悄悄掉进「无区县代码」清单，
+        不报错也不告警。这条断言把静默失效变成红灯。
+        """
+        rows = read_csv(ROOT / "江苏省环评审批机构.csv")
+        produced = {(r["城市"], r["地区"]) for r in rows}
+        missing = sorted(set(fcs.ZONE_DISTRICT["320000"]) - produced)
+        self.assertEqual(missing, [], f"这些映射键已不再由清洗产生：{missing}")
+
+    def test_area_tree_snapshot_matches_raw(self):
+        """入库快照必须与运行时抓的地区树一致，否则下游区划码会悄悄漂移。"""
+        if not HAS_RAW:
+            self.skipTest(f"没有原始记录 {RAW}")
+        snap = fcs.load_tree("320000", ROOT / "refs" / "__absent__")
+        live = fcs.load_tree("320000", RAW)
+        self.assertEqual(snap, live)
+
+    def test_zone_registry_covers_all_zone_keys(self):
+        """开发区维表要盖住清洗产出的每一个开发区/园区键，否则主表会漏挂片区。"""
+        tree = fcs.load_tree("320000")
+        cities = {m["名称"] for m in tree["市"]}
+        shorts = {(m["名称"], q["简称"]) for m in tree["市"] for q in m.get("区县", [])}
+        cores = {(c, fcs.core(s)) for c, s in shorts}
+        zones = {(r["city"], r["source_label"])
+                 for r in read_csv(ROOT / "refs" / "zones_320000.csv")}
+        missing = set()
+        for r in read_csv(ROOT / "江苏省环评单位.csv"):
+            key = (r["城市"], r["地区"])
+            if r["地区"] in ("市本级", "省级", "国家") or key in shorts or key in cores:
+                continue
+            if r["城市"] in cities and key not in zones:
+                missing.add(key)
+        self.assertEqual(sorted(missing), [], f"维表缺这些片区键：{sorted(missing)}")
+
+
+class NoticeResolveTest(unittest.TestCase):
+    """受理公示的解析规则。用例取自南京 300 条 / 常州栏目的真实写法，离线跑。
+
+    规则顺序是硬要求：先判辐射再判地区。南京市局栏目 300 条里，标题括号有三种语义
+    混着——发文机关 166、业务类别（辐射）79、项目属地 34——只取括号会造出一个
+    叫「辐射」的区县。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import resolve_notice as rn
+        cls.rn = rn
+        cls.tree = fcs.load_tree("320000")
+        cls.places = cj.Places(cls.tree)
+        cls.city = {c["名称"]: c for c in cls.tree["市"]}
+
+    def cls_(self, city, title, src, locs, org=""):
+        return self.rn.classify(title, src, locs, self.city[city], self.places, org)
+
+    def test_bracket_is_publisher(self):
+        """括号=发文机关：来源解析出的区与括号一致。"""
+        r = self.cls_("南京市",
+                      "南京市生态环境局关于2026年9月23日建设项目环境影响评价文件 受理情况的公示（玄武）",
+                      "南京市玄武生态环境局", ["江苏省南京市玄武区龙蟠路9号兴隆大厦负一、三、四层"])
+        self.assertEqual(r["bracket_meaning"], "发文机关")
+        self.assertEqual(r["approval_district"], "玄武")
+        self.assertEqual(r["project_districts"], ["玄武"])
+
+    def test_bracket_is_project_location(self):
+        """括号=项目属地：市局代发，审批地是市本级、项目地是高淳。高淳 29 条全是这种。"""
+        r = self.cls_("南京市",
+                      "南京市生态环境局关于2025年8月1日建设项目环境影响评价文件受理情况的公示（高淳）",
+                      "南京市生态环境局", ["南京市高淳区古柏街道"])
+        self.assertEqual(r["bracket_meaning"], "项目属地")
+        self.assertEqual(r["approval_district"], "市本级")
+        self.assertEqual(r["project_districts"], ["高淳"])
+
+    def test_radiation_is_not_a_district(self):
+        """括号=业务类别：辐射必须先判，否则会被当成区县名。"""
+        r = self.cls_("南京市",
+                      "2026年09月17日南京市生态环境局受理建设项目环评文件情况公示(辐射)",
+                      "南京市生态环境局", ["南京江北新区浦滨路"])
+        self.assertTrue(r["radiation"])
+        self.assertEqual(r["bracket_meaning"], "业务类别")
+        self.assertEqual(r["project_districts"], ["江北新区"])
+
+    def test_transformer_project_counts_as_radiation(self):
+        """输变电/千伏是辐射类最常见的写法，标题没写「辐射」也要认出来。"""
+        r = self.cls_("南京市",
+                      "南京市生态环境局关于220千伏送出工程环境影响评价文件受理情况的公示",
+                      "南京市生态环境局", [])
+        self.assertTrue(r["radiation"])
+
+    def test_channel_org_fills_placeless_source(self):
+        """常州页面的「来源：生态环境局」不含地名，只能靠栏目归属机构补全。"""
+        bare = self.cls_("常州市", "关于2026年9月18日建设项目生态环境影响评价文件受理情况的公示",
+                         "生态环境局", ["经开区"])
+        self.assertEqual(bare["approval_district"], "")
+        filled = self.cls_("常州市", "关于2026年9月18日建设项目生态环境影响评价文件受理情况的公示",
+                           "生态环境局", ["经开区"], org="常州市生态环境局")
+        self.assertEqual(filled["approval_district"], "市本级")
+        self.assertEqual(filled["bracket_meaning"], "无")
+
+    def test_approval_and_project_district_differ(self):
+        """常州整栏都是市局审批、项目散在各区县，两者必须分开存。"""
+        r = self.cls_("常州市", "关于2026年9月10日建设项目生态环境影响评价文件受理情况的公示",
+                      "生态环境局", ["溧阳市天目湖镇", "金坛区尧塘街道"], org="常州市生态环境局")
+        self.assertEqual(r["approval_district"], "市本级")
+        self.assertEqual(r["project_districts"], ["溧阳", "金坛"])
+
+
+class ReportAttachmentTest(unittest.TestCase):
+    """report_stage_probe.is_report：公示附件是不是环评报告正文。
+
+    用例全部取自 2026-10-08 浙江、安徽实际抓到的附件名。这条规则决定
+    「某省是不是只有受理阶段拿得到全本」的结论，误收批文会把审批决定阶段虚报成有报告。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from report_stage_probe import is_report
+        cls.is_report = staticmethod(is_report)
+
+    def test_decision_documents_are_not_reports(self):
+        """审查意见、批文文号、「…的函」文件名里都带报告书全名，只看「报告书」会全部误收。"""
+        for name in ("湖环建〔2026〕36号-关于浙江新盈电子材料有限公司年产730吨光刻胶原料项目环境影响报告书的审查意见.pdf",
+                     "关于温州振先环保科技有限公司污水处理中心资源化利用技改项目环境影响报告表审批意见的函.pdf",
+                     "台环建（新）〔2026〕25号关于台州市椒江海门橡胶三厂建设项目生态环境影响报告表的许可决定书.pdf",
+                     "杭环钱评批〔2026〕58号-浙江明日特灵新材料有限公司年产3万吨新材料共混改性项目.docx"):
+            self.assertFalse(self.is_report(name, 0), name)
+
+    def test_side_materials_are_not_reports(self):
+        for name in ("建设项目概况、主要环境影响及预防或减轻不良影响的对策或措施.docx",
+                     "环境影响评价公众参与说明.pdf"):
+            self.assertFalse(self.is_report(name, 0), name)
+
+    def test_report_naming_variants(self):
+        """各市对全本的叫法：公示稿、环评报告、环评文本、项目名直接当文件名，公参说明和报告打包。"""
+        for name in ("吴兴区埭溪镇共富羊场建设项目报告书公示稿及公众参与说明.zip",
+                     "环评报告-金华市乙顺再生资源回收有限公司-公示稿.pdf",
+                     "【环评文本】安徽氟瑞星化工有限公司年产5万吨化学纯氢氟酸扩产项目.docx",
+                     "马鞍山中粮生物化学有限公司5000吨／年β-环糊精项目.pdf",
+                     "公示-浙江明日特灵新材料有限公司年产3万吨新材料共混改性项目生态环境影响报告表.pdf",
+                     "（公示文本）浙江奋斗实业有限公司.pdf"):
+            self.assertTrue(self.is_report(name, 0), name)
+
+    def test_unnamed_attachment_needs_page_count(self):
+        """宁波附件只叫「附件1」：审批决定的是 8 页扫描批文（1.6MB），受理的是 456 页报告书。
+        只凭大小会把批文判成报告，所以大文件还要数页。"""
+        self.assertFalse(self.is_report("附件1", 1_600_000, lambda: 8))
+        self.assertTrue(self.is_report("附件1", 35_400_000, lambda: 456))
+        self.assertFalse(self.is_report("附件1", 900_000, lambda: 456))   # 太小的根本不去数

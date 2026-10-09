@@ -37,6 +37,11 @@ MODULES = {1: "环评受理", 2: "环评拟审批", 3: "环评审批", 5: "环�
 SPLIT = re.compile(r"[,，、;；\r\n]+")  # 组合值分隔符
 # 生态环境主管部门的各种写法
 ECO = re.compile(r"(生态环境(局|厅|部|和水务局)|环境保护(局|部|厅)|环保(局|厅|总局))")
+# 浙江的掐头 / 漏字写法（2026-10-08，每条都和完整写法在受理监督字段里共现）：
+# 「保护局滨江区分局」「态环境局嘉善分局」是截掉了头，「台州市环境局温岭分局」漏了「保护」，
+# 「衢州市生态保护局绿色产业集聚区分局」是「生态环境局」的笔误。
+# 「环境局」必须紧跟在市 / 县 / 区后面：安徽「合肥市辰泰环境局」没有证据是环保部门，不收。
+ECO_TRUNC = re.compile(r"^(?:保护局|态环境局|境保护局)|(?:^|[市县区])环境局|生态保护局")
 # 行政审批 / 政务服务口径
 ADMIN = re.compile(r"(行政审批局|政务服务管理办公室|政务服务中心|行政服务中心|数据局"
                    r"|管理委员会|管委会|市民中心)")
@@ -97,6 +102,14 @@ class Places:
     def __init__(self, tree: dict):
         self.code = tree["编码"]
         self.extra_zones = EXTRA_ZONES.get(self.code, ())
+        # 开头不带省市名、规则认不出的外省单位，经需求方确认后按省登记在 refs/misplaced_<省>.csv
+        # （浙江的「常州高新区（新北区）数据局」「广州开发区环境保护局」）。按写法精确匹配，不做包含：
+        # 裸写法「行政审批局」若登记进去，全省所有这么写的记录都会被误删
+        f = Path(__file__).resolve().parent / "refs" / f"misplaced_{self.code}.csv"
+        self.misplaced = set()
+        if f.exists():
+            with open(f, encoding="utf-8-sig") as fh:
+                self.misplaced = {normalize(r["写法"]) for r in csv.DictReader(fh) if r.get("写法")}
         self.prov = tree["名称"]
         self.prov_core = core(self.prov)
         self.cities = tree["市"]
@@ -119,11 +132,22 @@ class Places:
         self.city_words.discard("")
 
     def city_in(self, name: str) -> dict | None:
-        """名称里写明的本省城市。"""
+        """名称里写明的本省城市。
+
+        出现多个市名时取最靠前的：「宁波杭州湾新区环境保护局」是宁波的，原先按城市表顺序
+        先碰到杭州就返回了。市名后面紧跟「湾」的是海湾不是城市——杭州湾横跨宁波、嘉兴、绍兴，
+        「杭州湾上虞经济技术开发区」在绍兴上虞，跳过杭州后由区县名「上虞」定位。
+        （浙江实测 234 条因此挂错到杭州。）
+        """
+        best = None
         for city in self.cities:
-            if core(city["名称"]) and core(city["名称"]) in name:
-                return city
-        return None
+            c = core(city["名称"])
+            if not c:
+                continue
+            m = re.search(re.escape(c) + "(?!湾)", name)
+            if m and (best is None or m.start() < best[0]):
+                best = (m.start(), city)
+        return best[1] if best else None
 
     def strip_city_prefix(self, name: str, city: dict) -> str:
         """去掉名称开头的市名，如「淮安市生态环境局」→「生态环境局」。
@@ -190,6 +214,8 @@ class Places:
 
     def is_misplaced(self, name: str) -> bool:
         """标错地区：开头的省市不属于本省。"""
+        if name in self.misplaced:
+            return True
         m = PLACE_PREFIX.match(STATION.sub("", name))
         return bool(m) and core(m.group(1)) not in self.allowed
 
@@ -206,6 +232,13 @@ class Places:
         city = named_city or self.by_code.get(queried_city_code)
         if not city:
             return None
+        # 名称没写市、却写了别的市独有的区县名时，先切到那个市再认开发区：
+        # 「杭州湾上虞经济技术开发区生态环境分局」被站点标在杭州名下，上虞是绍兴的。
+        # 原先开发区先于区县判，「上虞」根本没机会起作用
+        if not named_city:
+            other = self.unique_district(name)
+            if other and other[0] != city["名称"]:
+                city = next(c for c in self.cities if c["名称"] == other[0])
         zone = self.zone_in(name, district)
         if zone:
             return (city["名称"], zone)
@@ -237,7 +270,7 @@ class Places:
 
     def function_of(self, name: str) -> str:
         """职能键：生态环境口、行政审批口，或者具体的委办局名称。"""
-        if ECO.search(name):
+        if ECO.search(name) or ECO_TRUNC.search(name):
             return "生态环境"
         # 「蚌埠市燕山路管委会高新区生态环境分局」是环保派出分局，不能因为名字里有「管委会」
         # 就并进该开发区的审批口
@@ -246,6 +279,12 @@ class Places:
         if ADMIN.search(name):
             return "行政审批"
         rest = self.strip_re.sub("", name)
+        # 浙江区县的环保机构是市局派出分局，公告常只写「南浔分局」「安吉分局」「滨江区分局」，
+        # 剥掉地名只剩「分局」；「东阳江分局」是「东阳江流域环保分局」的残留，剩一个字加分局。
+        # 南浔那 49 条有 44 条和「湖州市生态环境局南浔分局」共现。前面带了别的局名的
+        # （「宁波市公安局北仑分局」剥完是「公安局分局」）不受影响。
+        if rest == "分局" or re.fullmatch(r"[一-龥]分局", rest):
+            return "生态环境"
         # 名称本身就是一个开发区/园区（「常熟高新技术产业开发区」「张家港市经济技术开发区(杨舍镇)」），
         # 发布主体即其管委会，归到行政审批口，好和同一个开发区的管委会/政务服务中心并到一起。
         if not ZONE.sub("", re.sub(r"[（(].*?[）)]", "", rest)).strip():
@@ -375,7 +414,9 @@ def clean(records: list[tuple[str, str, str, str]], places: Places) -> list[dict
             "城市": city,
             "地区": area,
             "单位": ranked[0][0],
-            "职能": role_of(ranked[0][0]),
+            # 归并键已经用地名感知的规则判过是生态环境口（含「南浔分局」这种裸分局），
+            # 就不再只看代表名的字面——代表名按日期选，可能恰好是那个裸写法
+            "职能": "生态环境" if _func == "生态环境" else role_of(ranked[0][0]),
             "最新公告日期": max(stats[k]["date"] for k in keys),
             "记录数": sum(stats[k]["count"] for k in keys),
             # 机构名里本身可能有「、」，这里用斜杠分隔
@@ -403,6 +444,10 @@ def role_of(name: str) -> str:
     # 「经开区分局」「工业园区分局」是公告里对生态环境局派出分局的简写；
     # 前面带了别的局名的（「泰州市水利局医药高新区分局」）不算
     if ROLE_ECO.search(name) or re.fullmatch(r"[^局]*(开发区|经开区|园区|高新区|新区)分局", name):
+        return "生态环境"
+    # 浙江掐头漏字的写法。裸分局（「南浔分局」）不在这里认——光看字面会把「民航安徽空管分局」
+    # 也当成环保；它靠 function_of 剥地名判，合并时归并键是生态环境就直接标生态环境
+    if ECO_TRUNC.search(name):
         return "生态环境"
     if ROLE_ADMIN.search(name):
         return "行政审批"
