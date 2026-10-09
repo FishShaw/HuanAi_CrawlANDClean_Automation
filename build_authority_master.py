@@ -173,6 +173,9 @@ def build_entry_registry(entries: dict, province: str, cities: set[str]) -> dict
         e = agg.setdefault(url, {"cities": set(), "n": 0, "row": row})
         e["cities"].add(city)
         e["n"] += 1
+        # 「推断」是单位层面的结论（这个单位大概也发在这里），不代表栏目本身的核验情况
+        if e["row"].get("核验情况") == "推断" and row.get("核验情况") != "推断":
+            e["row"] = row
 
     out, url2id = [], {}
     for i, (url, e) in enumerate(sorted(agg.items(), key=lambda x: -x[1]["n"]), 1):
@@ -417,8 +420,10 @@ def main() -> None:
                 r["entry_category"] = e.get("entry_category", "")
                 r["filter_rule"] = e.get("filter_rule", "")
                 r["entry_path"] = e.get("entry_path", "") or r["entry_path"]
-                r["verify_status"] = e.get("verify_status", "") or r["verify_status"]
-                r["verify_date"] = e.get("verify_date", "") or r["verify_date"]
+                # 推断出来的单位和已核实单位共用栏目时，不能继承对方的「已核实」
+                if r["verify_status"] != "推断":
+                    r["verify_status"] = e.get("verify_status", "") or r["verify_status"]
+                    r["verify_date"] = e.get("verify_date", "") or r["verify_date"]
 
     live = {r["unit_uid"] for r in rows}
     for uid, old in prev.items():
